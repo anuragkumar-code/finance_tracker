@@ -46,6 +46,7 @@ class Transaction extends Model
         'reference',
         'source',
         'void_reason',
+        'credit_card_payment_id',
     ];
 
     protected function casts(): array
@@ -94,6 +95,12 @@ class Transaction extends Model
     public function splits(): HasMany
     {
         return $this->hasMany(TransactionSplit::class);
+    }
+
+    /** Set when this leg is one side of a credit-card bill payment. */
+    public function creditCardPayment(): BelongsTo
+    {
+        return $this->belongsTo(CreditCardPayment::class);
     }
 
     public function tags(): BelongsToMany

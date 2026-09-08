@@ -173,8 +173,12 @@
                        href="{{ route('accounts.index') }}">Accounts</a>
                 </li>
 
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('credit-cards.*') ? 'active' : '' }}"
+                       href="{{ route('credit-cards.index') }}">Credit Cards</a>
+                </li>
+
                 <li class="nav-section">Coming next</li>
-                <li class="nav-item"><span class="nav-link disabled">Credit Cards</span></li>
                 <li class="nav-item"><span class="nav-link disabled">Loans</span></li>
                 <li class="nav-item"><span class="nav-link disabled">Recurring &amp; Upcoming</span></li>
                 <li class="nav-item"><span class="nav-link disabled">Reports</span></li>

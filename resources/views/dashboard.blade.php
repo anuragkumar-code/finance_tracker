@@ -190,6 +190,45 @@
             </div>
         </div>
 
+        @if (bccomp($cardsOwed, '0', 2) !== 0 || $cardDues->isNotEmpty())
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Cards</span>
+                    <a href="{{ route('credit-cards.index') }}" class="small text-decoration-none">View all</a>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-baseline mb-2">
+                        <span class="text-body-secondary">Owed across cards</span>
+                        <span class="h5 mb-0 money money-neg">@inr($cardsOwed)</span>
+                    </div>
+
+                    @if ($cardDues->isEmpty())
+                        <div class="small text-body-secondary">No bills due in the next 30 days.</div>
+                    @else
+                        <div class="small text-body-secondary mb-1">Due in the next 30 days</div>
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                            @foreach ($cardDues as $due)
+                                <tr>
+                                    <td>
+                                        <a class="text-decoration-none"
+                                           href="{{ route('credit-cards.statements.show', [$due->creditCard, $due]) }}">
+                                            {{ $due->creditCard->card_name }}
+                                        </a>
+                                        <div class="small text-body-secondary">
+                                            by {{ $due->due_date->format('d M') }}
+                                        </div>
+                                    </td>
+                                    <td class="text-end money">@inr($due->balanceRemaining())</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <div class="card mb-3">
             <div class="card-header">Planned vs unplanned</div>
             <div class="card-body p-0">

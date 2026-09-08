@@ -69,3 +69,21 @@ Tests run against `finance_tracker_test` (real MariaDB, not SQLite) because the
 ledger relies on database-level CHECK constraints and DECIMAL semantics that
 SQLite does not reproduce. The test database is wiped on every run; your real
 data in `finance_tracker` is never touched.
+
+## Credit cards (Phase 2)
+
+Three separate things, deliberately never merged:
+
+1. **A purchase** is recorded through Quick Entry with the card chosen as the
+   account. It counts as spending on the day you buy, and raises what you owe.
+   No bank account is touched.
+2. **A statement** groups purchases you already recorded. Add it when your real
+   statement arrives: the app pre-fills the total it grouped, and you replace it
+   with the bank's figure. If the two differ, the gap is shown rather than
+   quietly reconciled — it usually means a purchase was missed.
+3. **A bill payment** moves money from your bank and reduces what you owe. It is
+   never counted as spending again, because the purchases it settles were
+   already counted when you made them.
+
+Partial payments are supported; a statement tracks as awaiting payment, partly
+paid, paid, or overdue.

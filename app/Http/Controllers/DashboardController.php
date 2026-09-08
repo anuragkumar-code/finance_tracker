@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\CreditCard;
 use App\Models\Transaction;
+use App\Services\CreditCardService;
 use App\Services\Reporting\SpendingReportService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -12,6 +14,7 @@ class DashboardController extends Controller
 {
     public function __construct(
         private readonly SpendingReportService $reports,
+        private readonly CreditCardService $cards,
     ) {}
 
     public function index(Request $request): View
@@ -37,6 +40,14 @@ class DashboardController extends Controller
             'byPayer' => $this->reports->groupedBy('payer_id', $start, $end),
 
             'accounts' => Account::query()->active()->orderBy('type')->orderBy('name')->get(),
+
+            // Card bills coming due are the household's most immediate
+            // commitment, so they sit on the dashboard rather than behind a tab.
+            'cardDues' => $this->cards->upcomingDues(30),
+            'cardsOwed' => CreditCard::with('account')->get()->reduce(
+                fn (string $carry, CreditCard $card) => bcadd($carry, $card->outstanding(), 2),
+                '0.00'
+            ),
 
             'recent' => Transaction::query()
                 ->with(['account', 'category', 'merchant', 'payer', 'beneficiary'])

@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\CreditCardController;
+use App\Http\Controllers\CreditCardPaymentController;
+use App\Http\Controllers\CreditCardStatementController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\QuickEntryController;
 use App\Http\Controllers\Settings\CategoryController;
@@ -36,6 +39,26 @@ Route::post('/transactions/{id}/restore', [TransactionController::class, 'restor
 // Accounts and opening balances
 Route::post('/accounts/recalculate', [AccountController::class, 'recalculate'])->name('accounts.recalculate');
 Route::resource('accounts', AccountController::class)->except(['destroy']);
+
+/*
+ * Credit cards. Three separate things live here and must never be conflated:
+ * purchases (recorded via Quick Entry like any expense), statements (a grouping
+ * of those purchases, creating no new financial event), and bill payments
+ * (which clear the liability without adding to spending).
+ */
+Route::resource('credit-cards', CreditCardController::class)->except(['destroy']);
+
+Route::prefix('credit-cards/{creditCard}')->name('credit-cards.')->group(function () {
+    Route::get('/statements/new', [CreditCardStatementController::class, 'create'])->name('statements.create');
+    Route::post('/statements', [CreditCardStatementController::class, 'store'])->name('statements.store');
+    Route::get('/statements/{statement}', [CreditCardStatementController::class, 'show'])->name('statements.show');
+    Route::post('/statements/{statement}/regenerate', [CreditCardStatementController::class, 'regenerate'])
+        ->name('statements.regenerate');
+
+    Route::get('/payments/new', [CreditCardPaymentController::class, 'create'])->name('payments.create');
+    Route::post('/payments', [CreditCardPaymentController::class, 'store'])->name('payments.store');
+    Route::post('/payments/{payment}/void', [CreditCardPaymentController::class, 'void'])->name('payments.void');
+});
 
 // Settings
 Route::prefix('settings')->name('settings.')->group(function () {
