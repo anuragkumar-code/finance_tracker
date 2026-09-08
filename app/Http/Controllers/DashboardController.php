@@ -6,7 +6,9 @@ use App\Models\Account;
 use App\Models\CreditCard;
 use App\Models\Transaction;
 use App\Services\CreditCardService;
+use App\Services\LoanService;
 use App\Services\Reporting\SpendingReportService;
+use App\Services\Reporting\UpcomingObligationsService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -15,6 +17,8 @@ class DashboardController extends Controller
     public function __construct(
         private readonly SpendingReportService $reports,
         private readonly CreditCardService $cards,
+        private readonly UpcomingObligationsService $upcoming,
+        private readonly LoanService $loans,
     ) {}
 
     public function index(Request $request): View
@@ -48,6 +52,14 @@ class DashboardController extends Controller
                 fn (string $carry, CreditCard $card) => bcadd($carry, $card->outstanding(), 2),
                 '0.00'
             ),
+
+            // What is left after everything already committed (spec section 21).
+            'reality' => $this->upcoming->financialReality(30),
+            'obligations' => $this->upcoming->forNextDays(30)->take(6),
+
+            // EMIs are counted inside "spent" by household choice, so the
+            // debt-repayment portion is shown alongside it rather than hidden.
+            'debtRepaid' => $this->loans->paidBetween($start, $end),
 
             'recent' => Transaction::query()
                 ->with(['account', 'category', 'merchant', 'payer', 'beneficiary'])

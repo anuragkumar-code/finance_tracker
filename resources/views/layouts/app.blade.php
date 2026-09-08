@@ -178,9 +178,20 @@
                        href="{{ route('credit-cards.index') }}">Credit Cards</a>
                 </li>
 
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('loans.*') ? 'active' : '' }}"
+                       href="{{ route('loans.index') }}">Loans</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('recurring.*') ? 'active' : '' }}"
+                       href="{{ route('recurring.index') }}">Recurring</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('upcoming.*') ? 'active' : '' }}"
+                       href="{{ route('upcoming.index') }}">Upcoming</a>
+                </li>
+
                 <li class="nav-section">Coming next</li>
-                <li class="nav-item"><span class="nav-link disabled">Loans</span></li>
-                <li class="nav-item"><span class="nav-link disabled">Recurring &amp; Upcoming</span></li>
                 <li class="nav-item"><span class="nav-link disabled">Reports</span></li>
 
                 <li class="nav-section">Settings</li>

@@ -5,7 +5,10 @@ use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\CreditCardPaymentController;
 use App\Http\Controllers\CreditCardStatementController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LoanController;
 use App\Http\Controllers\QuickEntryController;
+use App\Http\Controllers\RecurringTransactionController;
+use App\Http\Controllers\UpcomingController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\MerchantController;
 use App\Http\Controllers\Settings\PersonController;
@@ -59,6 +62,29 @@ Route::prefix('credit-cards/{creditCard}')->name('credit-cards.')->group(functio
     Route::post('/payments', [CreditCardPaymentController::class, 'store'])->name('payments.store');
     Route::post('/payments/{payment}/void', [CreditCardPaymentController::class, 'void'])->name('payments.void');
 });
+
+/*
+ * Loans, simplified to EMI and tenure (household decision): no interest rate,
+ * no amortisation. The schedule is laid out once and confirmed month by month.
+ */
+Route::resource('loans', LoanController::class)->except(['destroy']);
+Route::post('/loans/{loan}/instalments/{payment}/pay', [LoanController::class, 'payInstalment'])
+    ->name('loans.instalments.pay');
+Route::post('/loans/{loan}/instalments/{payment}/unpay', [LoanController::class, 'unpayInstalment'])
+    ->name('loans.instalments.unpay');
+
+// Recurring commitments — forecasts until someone confirms them.
+Route::get('/recurring', [RecurringTransactionController::class, 'index'])->name('recurring.index');
+Route::post('/recurring', [RecurringTransactionController::class, 'store'])->name('recurring.store');
+Route::put('/recurring/{recurring}', [RecurringTransactionController::class, 'update'])->name('recurring.update');
+Route::delete('/recurring/{recurring}', [RecurringTransactionController::class, 'destroy'])->name('recurring.destroy');
+Route::post('/recurring/occurrences/{occurrence}/confirm', [RecurringTransactionController::class, 'confirm'])
+    ->name('recurring.occurrences.confirm');
+Route::post('/recurring/occurrences/{occurrence}/skip', [RecurringTransactionController::class, 'skip'])
+    ->name('recurring.occurrences.skip');
+
+// What is committed, and what that leaves.
+Route::get('/upcoming', [UpcomingController::class, 'index'])->name('upcoming.index');
 
 // Settings
 Route::prefix('settings')->name('settings.')->group(function () {

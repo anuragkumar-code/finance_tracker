@@ -45,7 +45,15 @@
             <div class="card-body">
                 <div class="stat-label">Spent</div>
                 <div class="stat-value money">@inr($spending)</div>
-                <div class="small text-body-secondary mt-1">Excludes transfers &amp; card bill payments</div>
+                @if (bccomp($debtRepaid, '0', 2) === 1)
+                    {{-- EMIs are included in "spent" by household choice, so the
+                         debt share is shown rather than buried. --}}
+                    <div class="small text-body-secondary mt-1">
+                        incl. @inr($debtRepaid) loan EMIs
+                    </div>
+                @else
+                    <div class="small text-body-secondary mt-1">Excludes transfers &amp; card bill payments</div>
+                @endif
             </div>
         </div>
     </div>
@@ -61,13 +69,46 @@
     <div class="col-6 col-lg-3">
         <div class="card h-100">
             <div class="card-body">
-                <div class="stat-label">Bank + cash now</div>
-                <div class="stat-value money">@inr($spendableCash)</div>
-                <div class="small text-body-secondary mt-1">Before upcoming commitments</div>
+                <div class="stat-label">Realistically available</div>
+                <div class="stat-value money {{ $reality['is_negative'] ? 'money-neg' : '' }}">
+                    @inr($reality['realistic'])
+                </div>
+                <div class="small text-body-secondary mt-1">
+                    @inr($spendableCash) less @inr($reality['committed']) committed
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+@if ($obligations->isNotEmpty())
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Coming up</span>
+            <a href="{{ route('upcoming.index') }}" class="small text-decoration-none">See all</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <tbody>
+                @foreach ($obligations as $item)
+                    <tr>
+                        <td class="text-nowrap text-body-secondary" style="width:6rem;">
+                            {{ $item->due_date->format('d M') }}
+                        </td>
+                        <td>
+                            <a href="{{ $item->url }}" class="text-decoration-none">{{ $item->label }}</a>
+                            @if ($item->is_estimated)
+                                <span class="badge text-bg-secondary">estimate</span>
+                            @endif
+                        </td>
+                        <td class="text-end money">@inr($item->amount)</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+@endif
 
 <div class="row g-3">
     <div class="col-lg-7">

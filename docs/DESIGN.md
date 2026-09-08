@@ -700,3 +700,66 @@ Success criterion for Phase 1 (§33): a household member can record a bank expen
 - `app/Services/TransactionService.php` and `app/Services/TransferService.php` — where Rule 6 (edit consistency) and Rule 7 (soft-delete/void cascades) are actually enforced.
 - `app/Services/CreditCardService.php` — implements §4's purchase/statement/payment separation (Phase 2, but its contract should be sketched early since `transactions.credit_card_payment_id`/`leg_role` are already in the Phase-1 schema).
 - `app/Services/Reporting/SpendingReportService.php` — the single place the §26 metric definitions (§6 of this document) are implemented as query methods, so every dashboard/report figure is guaranteed to agree.
+
+---
+
+## Phase 3 amendments — loans and commitments
+
+Two decisions here depart from what was approved above. Both were put to the
+household with their trade-offs and chosen deliberately on 2026-09-08.
+
+### D11 — Loans are described by EMI and tenure, not by an interest rate
+
+The original design (§4 of this document) split each EMI into principal and
+interest. That is dropped. A loan now carries only `emi_amount`, `total_months`,
+`start_date` and `due_day`, because those are the numbers the household actually
+knows and none of them change. Everything else derives:
+
+```
+total_payable = emi_amount * total_months
+paid          = sum of instalments marked paid
+remaining     = total_payable - paid
+```
+
+The spec permits this (§11: "V1 may allow manual entry of principal/interest
+components if automatic amortization is not implemented initially"); this goes a
+step further and omits the split entirely.
+
+**Consequence, deliberately accepted:** `remaining` is *cash still to pay*, not
+principal outstanding — it includes future interest. Net worth therefore treats
+unaccrued interest as debt, which is conservative rather than exact, and the loan
+figure will not match a lender's foreclosure quote. Every screen showing it says
+so in words.
+
+### D12 — A paid EMI counts as spending in full
+
+This contradicts spec Rule 3 ("principal is not ordinary expense") and Decision F,
+and the contradiction was explained before it was chosen. Without a
+principal/interest split there is no non-arbitrary way to count part of an EMI as
+consumption, so the household chose the simpler reading: money left, so it was
+spent.
+
+To keep the other view available rather than lost, every EMI expense is written
+with `purpose='debt'`. That makes "of which loan EMIs" a one-clause query, and
+the dashboard shows it under the headline spending figure. Anyone later wanting
+spec-conformant reporting can exclude `purpose='debt'` without a migration.
+
+### D13 — Schedules are laid out in full; payment is never assumed
+
+Creating a loan writes one `loan_payments` row per instalment for the whole
+tenure. Rows start `scheduled` and become `paid` only when confirmed — spec §13
+is explicit that the app must not assume a scheduled payment happened. Recurring
+commitments work identically through `recurring_transaction_occurrences`.
+
+Instalments already due when a loan is added are marked paid **without** creating
+transactions, because those payments predate the household's opening balances;
+fabricating ledger entries for them would corrupt account history. The loan shows
+correct progress, and the bank ledger stays honest.
+
+### D14 — Obligations are tagged confirmed or estimated
+
+`UpcomingObligationsService` marks loan EMIs and issued card bills as fixed, and
+recurring commitments as estimates, because presenting a forecast bill with the
+same confidence as a contractual EMI would quietly make "realistically available"
+untrustworthy. The UI labels estimates and reports what share of the committed
+total they represent.

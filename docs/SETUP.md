@@ -87,3 +87,32 @@ Three separate things, deliberately never merged:
 
 Partial payments are supported; a statement tracks as awaiting payment, partly
 paid, paid, or overdue.
+
+## Loans and commitments (Phase 3)
+
+**Loans** are described the simple way: monthly EMI, how many months, when it
+started, and the day it is deducted. No interest rate is needed. The full
+schedule is laid out from those four numbers, and the end date is worked out for
+you.
+
+Two things worth knowing:
+
+- **"Still to pay" is cash, not principal.** It is the remaining EMIs multiplied
+  by the EMI amount, so it includes future interest. It will not match the
+  foreclosure figure your lender quotes.
+- **A paid EMI counts as spending in full.** This household chose that over
+  excluding it as debt repayment. The dashboard shows "incl. X loan EMIs" under
+  the spending figure so both readings stay visible.
+
+When adding a loan that started months ago, instalments already due are marked
+paid but create no bank entries — those payments happened before you started
+tracking, and inventing them would throw your balances off.
+
+**Recurring commitments** (rent, bills, subscriptions, family support) are
+forecasts, never assumptions. Each due date waits as "scheduled" until you
+confirm it happened, at which point the real transaction is written. You can
+confirm at a different amount when the actual bill differs, or skip a month.
+
+**Upcoming** answers "how much can I actually spend": bank and cash, minus
+everything committed in the next 7/30/60/90 days. Amounts from recurring
+commitments are labelled *estimate*; EMIs and issued card bills are fixed.
