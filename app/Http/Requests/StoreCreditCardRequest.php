@@ -16,6 +16,7 @@ class StoreCreditCardRequest extends FormRequest
         return [
             'card_name' => ['required', 'string', 'max:100'],
             'institution' => ['nullable', 'string', 'max:100'],
+            'owner_id' => ['nullable', 'exists:people,id'],
             'credit_limit' => ['required', 'numeric', 'gt:0', 'max:99999999999.99'],
             'statement_day' => ['required', 'integer', 'between:1,31'],
             'payment_due_day' => ['required', 'integer', 'between:1,31'],

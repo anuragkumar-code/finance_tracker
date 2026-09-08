@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Http\Requests\StoreCreditCardRequest;
 use App\Models\Account;
 use App\Models\CreditCard;
+use App\Models\Person;
 use App\Services\AccountBalanceService;
 use App\Services\CreditCardService;
 use Illuminate\Http\RedirectResponse;
@@ -21,7 +22,7 @@ class CreditCardController extends Controller
 
     public function index(): View
     {
-        $cards = CreditCard::with('account')->orderBy('card_name')->get();
+        $cards = CreditCard::with('account.owner')->orderBy('card_name')->get();
 
         return view('credit-cards.index', [
             'cards' => $cards,
@@ -35,7 +36,9 @@ class CreditCardController extends Controller
 
     public function create(): View
     {
-        return view('credit-cards.create');
+        return view('credit-cards.create', [
+            'owners' => Person::query()->active()->payers()->ordered()->get(),
+        ]);
     }
 
     /**
@@ -51,6 +54,7 @@ class CreditCardController extends Controller
                 'name' => $data['card_name'],
                 'type' => AccountType::CreditCard,
                 'institution' => $data['institution'] ?? null,
+                'owner_id' => $data['owner_id'] ?? null,
                 'opening_balance' => $data['opening_balance'],
                 'opening_balance_date' => $data['opening_balance_date'],
                 'notes' => $data['notes'] ?? null,
@@ -97,7 +101,10 @@ class CreditCardController extends Controller
 
     public function edit(CreditCard $creditCard): View
     {
-        return view('credit-cards.edit', ['card' => $creditCard->load('account')]);
+        return view('credit-cards.edit', [
+            'card' => $creditCard->load('account.owner'),
+            'owners' => Person::query()->active()->payers()->ordered()->get(),
+        ]);
     }
 
     public function update(StoreCreditCardRequest $request, CreditCard $creditCard): RedirectResponse
@@ -108,6 +115,7 @@ class CreditCardController extends Controller
             $creditCard->account->update([
                 'name' => $data['card_name'],
                 'institution' => $data['institution'] ?? null,
+                'owner_id' => $data['owner_id'] ?? null,
                 'opening_balance' => $data['opening_balance'],
                 'opening_balance_date' => $data['opening_balance_date'],
                 'is_active' => $request->boolean('is_active'),

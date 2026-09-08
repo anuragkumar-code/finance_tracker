@@ -63,6 +63,7 @@ class LoanService
             $loan = Loan::create([
                 'name' => $data['name'],
                 'lender' => $data['lender'] ?? null,
+                'owner_id' => $data['owner_id'] ?? null,
                 'emi_amount' => $emi,
                 'total_months' => $months,
                 'start_date' => $startDate->toDateString(),

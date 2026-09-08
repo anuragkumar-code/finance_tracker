@@ -2,7 +2,9 @@
 
 @section('title', $loan->name)
 @section('heading', $loan->name)
-@section('subheading', ($loan->lender ?: 'Loan') . ' · ' . $loan->total_months . ' months from ' . $loan->start_date->format('M Y'))
+@section('subheading', ($loan->lender ?: 'Loan')
+    . ($loan->owner ? ' · ' . $loan->owner->name : '')
+    . ' · ' . $loan->total_months . ' months from ' . $loan->start_date->format('M Y'))
 
 @section('actions')
     <a href="{{ route('loans.edit', $loan) }}" class="btn btn-sm btn-outline-secondary">Edit</a>

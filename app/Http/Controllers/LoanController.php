@@ -22,7 +22,7 @@ class LoanController extends Controller
 
     public function index(): View
     {
-        $loans = Loan::with('paymentAccount')->orderBy('status')->orderBy('name')->get();
+        $loans = Loan::with(['paymentAccount', 'owner'])->orderBy('status')->orderBy('name')->get();
 
         return view('loans.index', [
             'loans' => $loans,
@@ -59,7 +59,7 @@ class LoanController extends Controller
 
     public function show(Loan $loan): View
     {
-        $loan->load(['paymentAccount', 'category']);
+        $loan->load(['paymentAccount', 'category', 'owner']);
 
         return view('loans.show', [
             'loan' => $loan,
@@ -87,6 +87,7 @@ class LoanController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'lender' => ['nullable', 'string', 'max:100'],
+            'owner_id' => ['nullable', 'exists:people,id'],
             'payment_account_id' => ['nullable', 'exists:accounts,id'],
             'category_id' => ['nullable', 'exists:categories,id'],
             'notes' => ['nullable', 'string'],
@@ -142,6 +143,7 @@ class LoanController extends Controller
         return [
             'accounts' => Account::query()->active()->assets()->orderBy('name')->get(),
             'categories' => Category::query()->active()->forExpenses()->ordered()->get(),
+            'owners' => \App\Models\Person::query()->active()->payers()->ordered()->get(),
         ];
     }
 }

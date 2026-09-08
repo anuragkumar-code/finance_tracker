@@ -2,7 +2,8 @@
 
 @section('title', $card->card_name)
 @section('heading', $card->card_name)
-@section('subheading', $card->account->institution ?: 'Credit card')
+@section('subheading', ($card->account->institution ?: 'Credit card')
+    . ($card->account->owner ? ' · ' . $card->account->owner->name . "'s card" : ''))
 
 @section('actions')
     <div class="d-flex gap-2">

@@ -103,7 +103,7 @@
                                     <option value="">Choose…</option>
                                     @foreach ($accounts as $account)
                                         <option value="{{ $account->id }}" @selected(old('account_id') == $account->id)>
-                                            {{ $account->name }}
+                                            {{ $account->name }}@if ($account->owner) · {{ $account->owner->name }}@endif
                                         </option>
                                     @endforeach
                                 </select>
@@ -124,8 +124,23 @@
                                 <input type="date" name="transaction_date" id="transaction_date" class="form-control"
                                        value="{{ old('transaction_date', now()->toDateString()) }}" required>
                             </div>
+                            {{-- Whose income this is belongs on payer, not beneficiary:
+                                 payer is the person the money came through, which is
+                                 what "whose salary" means. --}}
                             <div class="col-md-6">
-                                <label for="beneficiary_id" class="form-label">Earned by <span class="text-body-secondary">(optional)</span></label>
+                                <label for="payer_id" class="form-label">Earned by</label>
+                                <select name="payer_id" id="payer_id" class="form-select">
+                                    <option value="">—</option>
+                                    @foreach ($payers as $person)
+                                        <option value="{{ $person->id }}" @selected(old('payer_id') == $person->id)>
+                                            {{ $person->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="beneficiary_id" class="form-label">For <span class="text-body-secondary">(optional)</span></label>
                                 <select name="beneficiary_id" id="beneficiary_id" class="form-select">
                                     <option value="">—</option>
                                     @foreach ($beneficiaries as $person)

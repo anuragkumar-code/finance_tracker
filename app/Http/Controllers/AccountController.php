@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\AccountType;
 use App\Http\Requests\StoreAccountRequest;
 use App\Models\Account;
+use App\Models\Person;
 use App\Models\Transaction;
 use App\Services\AccountBalanceService;
 use Illuminate\Http\RedirectResponse;
@@ -18,19 +19,29 @@ class AccountController extends Controller
         private readonly AccountBalanceService $balances,
     ) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $accounts = Account::query()->orderBy('type')->orderBy('name')->get();
+        $owner = $request->integer('owner') ?: null;
+
+        $accounts = Account::query()
+            ->with('owner')
+            ->when($owner, fn ($q) => $q->ownedBy($owner))
+            ->orderBy('type')->orderBy('name')->get();
 
         return view('accounts.index', [
             'accounts' => $accounts->groupBy(fn (Account $a) => $a->type->label()),
             'netWorth' => $this->balances->netWorth(),
+            'owners' => Person::query()->active()->payers()->ordered()->get(),
+            'selectedOwner' => $owner,
         ]);
     }
 
     public function create(): View
     {
-        return view('accounts.create', ['types' => AccountType::cases()]);
+        return view('accounts.create', [
+            'types' => AccountType::cases(),
+            'owners' => Person::query()->active()->payers()->ordered()->get(),
+        ]);
     }
 
     public function store(StoreAccountRequest $request): RedirectResponse
@@ -64,6 +75,7 @@ class AccountController extends Controller
         return view('accounts.edit', [
             'account' => $account,
             'types' => AccountType::cases(),
+            'owners' => Person::query()->active()->payers()->ordered()->get(),
             'hasActivity' => $account->transactions()->exists(),
         ]);
     }

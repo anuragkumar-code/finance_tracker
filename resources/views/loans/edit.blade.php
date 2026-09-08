@@ -31,6 +31,24 @@
                             <input type="text" name="lender" id="lender" class="form-control"
                                    value="{{ old('lender', $loan->lender) }}">
                         </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Whose loan</label>
+                            <div class="chip-group">
+                                @foreach ($owners as $owner)
+                                    <label class="chip">
+                                        <input type="radio" name="owner_id" value="{{ $owner->id }}"
+                                               @checked(old('owner_id', $loan->owner_id) == $owner->id)>
+                                        <span>{{ $owner->name }}</span>
+                                    </label>
+                                @endforeach
+                                <label class="chip">
+                                    <input type="radio" name="owner_id" value=""
+                                           @checked(old('owner_id', $loan->owner_id) === null)>
+                                    <span>Not set</span>
+                                </label>
+                            </div>
+                        </div>
                         <div class="col-md-6">
                             <label for="payment_account_id" class="form-label">Usually paid from</label>
                             <select name="payment_account_id" id="payment_account_id" class="form-select">

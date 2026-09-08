@@ -19,6 +19,7 @@ class StoreAccountRequest extends FormRequest
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', new Enum(AccountType::class)],
             'institution' => ['nullable', 'string', 'max:100'],
+            'owner_id' => ['nullable', 'exists:people,id'],
             // Opening balance is a magnitude: for a credit card it is the amount
             // owed, so it stays positive and is never entered as a negative.
             'opening_balance' => ['required', 'numeric', 'min:0', 'max:99999999999.99'],

@@ -6,23 +6,27 @@ use App\Models\Person;
 use Illuminate\Database\Seeder;
 
 /**
- * Payers and beneficiaries from spec section 5.
+ * The household's people (spec section 5).
  *
- * Payers are who spent the money; beneficiaries are who it was for. The two
- * lists overlap but are not identical — parents can benefit from spending
- * without ever being the payer.
+ * Both partners use this app, so people are named rather than labelled "Me" and
+ * "Wife" — on a shared screen "Me" is ambiguous, and "My Parents" depends on who
+ * is reading it.
+ *
+ * Payers are who money came from; beneficiaries are who it was for. The lists
+ * overlap but are not identical: parents benefit from spending without ever
+ * being the payer.
  */
 class PersonSeeder extends Seeder
 {
     public function run(): void
     {
         $people = [
-            ['name' => 'Me',             'relationship' => 'self',          'payer' => true,  'beneficiary' => true,  'household' => false],
-            ['name' => 'Wife',           'relationship' => 'spouse',        'payer' => true,  'beneficiary' => true,  'household' => false],
-            ['name' => 'Household',      'relationship' => 'joint',         'payer' => true,  'beneficiary' => true,  'household' => true],
-            ['name' => 'My Parents',     'relationship' => 'my parents',    'payer' => false, 'beneficiary' => true,  'household' => false],
-            ['name' => "Wife's Parents", 'relationship' => "wife's parents", 'payer' => false, 'beneficiary' => true,  'household' => false],
-            ['name' => 'Other',          'relationship' => 'other',         'payer' => false, 'beneficiary' => true,  'household' => false],
+            ['name' => 'Anurag',             'relationship' => 'self',     'payer' => true,  'beneficiary' => true,  'household' => false],
+            ['name' => 'Khushboo',           'relationship' => 'spouse',   'payer' => true,  'beneficiary' => true,  'household' => false],
+            ['name' => 'Household',          'relationship' => 'joint',    'payer' => true,  'beneficiary' => true,  'household' => true],
+            ['name' => "Anurag's Parents",   'relationship' => 'parents',  'payer' => false, 'beneficiary' => true,  'household' => false],
+            ['name' => "Khushboo's Parents", 'relationship' => 'parents',  'payer' => false, 'beneficiary' => true,  'household' => false],
+            ['name' => 'Other',              'relationship' => 'other',    'payer' => false, 'beneficiary' => true,  'household' => false],
         ];
 
         $sort = 0;

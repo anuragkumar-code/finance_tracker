@@ -25,6 +25,7 @@ class Loan extends Model
     protected $fillable = [
         'name',
         'lender',
+        'owner_id',
         'emi_amount',
         'total_months',
         'start_date',
@@ -56,6 +57,12 @@ class Loan extends Model
     public function paymentAccount(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'payment_account_id');
+    }
+
+    /** Whose loan this is — a label, not a permission. */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(Person::class, 'owner_id');
     }
 
     public function category(): BelongsTo

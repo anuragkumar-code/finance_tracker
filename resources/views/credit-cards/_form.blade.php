@@ -14,6 +14,24 @@
                value="{{ old('institution', $card?->account?->institution) }}" placeholder="HDFC">
     </div>
 
+    <div class="col-12">
+        <label class="form-label">Whose card</label>
+        <div class="chip-group">
+            @foreach ($owners as $owner)
+                <label class="chip">
+                    <input type="radio" name="owner_id" value="{{ $owner->id }}"
+                           @checked(old('owner_id', $card?->account?->owner_id) == $owner->id)>
+                    <span>{{ $owner->name }}</span>
+                </label>
+            @endforeach
+            <label class="chip">
+                <input type="radio" name="owner_id" value=""
+                       @checked(old('owner_id', $card?->account?->owner_id) === null)>
+                <span>Not set</span>
+            </label>
+        </div>
+    </div>
+
     <div class="col-md-6">
         <label for="credit_limit" class="form-label">Credit limit</label>
         <div class="input-group">

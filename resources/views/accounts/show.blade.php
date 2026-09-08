@@ -2,7 +2,9 @@
 
 @section('title', $account->name)
 @section('heading', $account->name)
-@section('subheading', $account->type->label() . ($account->institution ? ' · ' . $account->institution : ''))
+@section('subheading', $account->type->label()
+    . ($account->institution ? ' · ' . $account->institution : '')
+    . ($account->owner ? ' · ' . $account->owner->name : ''))
 
 @section('actions')
     <a href="{{ route('accounts.edit', $account) }}" class="btn btn-sm btn-outline-secondary">Edit account</a>

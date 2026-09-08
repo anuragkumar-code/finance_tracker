@@ -18,6 +18,7 @@ class Account extends Model
         'name',
         'type',
         'institution',
+        'owner_id',
         'normal_balance',
         'opening_balance',
         'opening_balance_date',
@@ -55,6 +56,15 @@ class Account extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Whose account this is. A label for clarity on a shared screen, not a
+     * permission — there are no logins, and both partners see everything.
+     */
+    public function owner(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Person::class, 'owner_id');
     }
 
     public function isLiability(): bool
@@ -100,5 +110,10 @@ class Account extends Model
     public function scopeLiabilities(Builder $query): Builder
     {
         return $query->where('normal_balance', NormalBalance::Liability->value);
+    }
+
+    public function scopeOwnedBy(Builder $query, Person|int $person): Builder
+    {
+        return $query->where('owner_id', $person instanceof Person ? $person->getKey() : $person);
     }
 }

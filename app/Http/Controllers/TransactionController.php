@@ -212,7 +212,7 @@ class TransactionController extends Controller
     private function formData(): array
     {
         return [
-            'accounts' => Account::query()->active()->orderBy('name')->get(),
+            'accounts' => Account::query()->active()->with('owner')->orderBy('name')->get(),
             'categories' => Category::query()->active()->topLevel()->ordered()->with('children')->get(),
             'incomeCategories' => Category::query()->active()->forIncome()->ordered()->get(),
             'payers' => Person::query()->active()->payers()->ordered()->get(),

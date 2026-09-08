@@ -38,6 +38,24 @@
     </div>
 
     <div class="col-md-6">
+        <label class="form-label">Whose account</label>
+        <div class="chip-group">
+            @foreach ($owners as $owner)
+                <label class="chip">
+                    <input type="radio" name="owner_id" value="{{ $owner->id }}"
+                           @checked(old('owner_id', $account?->owner_id) == $owner->id)>
+                    <span>{{ $owner->name }}</span>
+                </label>
+            @endforeach
+            <label class="chip">
+                <input type="radio" name="owner_id" value=""
+                       @checked(old('owner_id', $account?->owner_id) === null)>
+                <span>Not set</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="col-md-6">
         <label for="currency" class="form-label">Currency</label>
         <input type="text" name="currency" id="currency" class="form-control" maxlength="3"
                value="{{ old('currency', $account?->currency ?? 'INR') }}">

@@ -53,10 +53,16 @@
                         <div class="chip-group">
                             @foreach ($accounts as $account)
                                 <label class="chip">
+                                    {{-- data-owner lets the form default "Paid by" to
+                                         whoever owns the account that was chosen. --}}
                                     <input type="radio" name="account_id" value="{{ $account->id }}"
+                                           data-owner="{{ $account->owner_id }}"
                                            @checked(old('account_id') == $account->id)>
                                     <span>
                                         {{ $account->name }}
+                                        @if ($account->owner)
+                                            <small class="text-body-secondary">· {{ $account->owner->name }}</small>
+                                        @endif
                                         @if ($account->isLiability())
                                             <span class="badge text-bg-warning ms-1">card</span>
                                         @endif
@@ -205,6 +211,17 @@ $(function () {
 
     $('#categoryChips').on('change', 'input[name="category_id"]', function () {
         renderSubcategories($(this).val());
+    });
+
+    // Choosing an account suggests who paid: money out of Khushboo's account was
+    // almost always paid by Khushboo. Only fills a blank — never overrides a
+    // choice already made, since one partner can pay from a joint account.
+    $('input[name="account_id"]').on('change', function () {
+        const ownerId = $(this).data('owner');
+
+        if (ownerId && !$('input[name="payer_id"]:checked').length) {
+            $('input[name="payer_id"][value="' + ownerId + '"]').prop('checked', true);
+        }
     });
 
     const initialCategory = $('input[name="category_id"]:checked').val();

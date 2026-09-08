@@ -51,7 +51,12 @@
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div>
                                 <a href="{{ route('loans.show', $loan) }}"
-                                   class="h6 mb-0 d-block text-decoration-none">{{ $loan->name }}</a>
+                                   class="h6 mb-0 d-block text-decoration-none">
+                                    {{ $loan->name }}
+                                    @if ($loan->owner)
+                                        <span class="badge text-bg-light border fw-normal">{{ $loan->owner->name }}</span>
+                                    @endif
+                                </a>
                                 <div class="small text-body-secondary">
                                     {{ $loan->lender ?: 'Loan' }} · due on the {{ $loan->due_day }}
                                 </div>

@@ -32,6 +32,23 @@
                                    value="{{ old('lender') }}" placeholder="HDFC">
                         </div>
 
+                        <div class="col-12">
+                            <label class="form-label">Whose loan</label>
+                            <div class="chip-group">
+                                @foreach ($owners as $owner)
+                                    <label class="chip">
+                                        <input type="radio" name="owner_id" value="{{ $owner->id }}"
+                                               @checked(old('owner_id') == $owner->id)>
+                                        <span>{{ $owner->name }}</span>
+                                    </label>
+                                @endforeach
+                                <label class="chip">
+                                    <input type="radio" name="owner_id" value="" @checked(old('owner_id') === null)>
+                                    <span>Not set</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="col-md-4">
                             <label for="emi_amount" class="form-label">Monthly EMI</label>
                             <div class="input-group">

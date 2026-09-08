@@ -98,7 +98,7 @@ class QuickEntryController extends Controller
     private function formData(): array
     {
         return [
-            'accounts' => Account::query()->active()->orderBy('name')->get(),
+            'accounts' => Account::query()->active()->with('owner')->orderBy('name')->get(),
             'categories' => Category::query()->active()->forExpenses()->topLevel()->ordered()->with('children')->get(),
             'payers' => Person::query()->active()->payers()->ordered()->get(),
             'beneficiaries' => Person::query()->active()->beneficiaries()->ordered()->get(),

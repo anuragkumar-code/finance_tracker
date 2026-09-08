@@ -60,7 +60,14 @@
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div>
                                 <a href="{{ route('credit-cards.show', $card) }}"
-                                   class="h6 mb-0 d-block text-decoration-none">{{ $card->card_name }}</a>
+                                   class="h6 mb-0 d-block text-decoration-none">
+                                    {{ $card->card_name }}
+                                    @if ($card->account->owner)
+                                        <span class="badge text-bg-light border fw-normal">
+                                            {{ $card->account->owner->name }}
+                                        </span>
+                                    @endif
+                                </a>
                                 <div class="small text-body-secondary">
                                     {{ $card->account->institution ?: 'Credit card' }} ·
                                     bills on the {{ $card->statement_day }}, due on the {{ $card->payment_due_day }}
