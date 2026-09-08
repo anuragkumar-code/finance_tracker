@@ -108,14 +108,25 @@ class CreditCard extends Model
         return $date->setDay(min($this->statement_day, $date->daysInMonth));
     }
 
+    /**
+     * When the bill for a given statement must be paid.
+     *
+     * The grace period runs forward from the statement date, so the due day
+     * lands in the SAME month when it falls after the statement day (SBI bills
+     * on the 7th and is due on the 26th), and in the NEXT month when it falls
+     * before it (Kotak bills on the 21st and is due on the 7th).
+     *
+     * Treating every card as "next month" would hand a card like SBI a 49-day
+     * grace period and push its bill out of the window where the household
+     * needs to see it coming.
+     */
     public function dueDateFor(Carbon $statementDate): Carbon
     {
-        // The due day usually falls in the month after the statement.
-        $due = $statementDate->copy()->addMonthNoOverflow();
+        $due = $this->payment_due_day > $statementDate->day
+            ? $statementDate->copy()
+            : $statementDate->copy()->addMonthNoOverflow();
 
-        $due = $due->setDay(min($this->payment_due_day, $due->daysInMonth));
-
-        return $due->lessThanOrEqualTo($statementDate) ? $due->addMonthNoOverflow() : $due;
+        return $due->setDay(min($this->payment_due_day, $due->daysInMonth))->startOfDay();
     }
 
     public function scopeActive(Builder $query): Builder

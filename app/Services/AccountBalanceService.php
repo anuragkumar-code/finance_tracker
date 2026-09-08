@@ -156,16 +156,4 @@ class AccountBalanceService
         return $drift;
     }
 
-    /** Net worth: what the household owns minus what it owes (spec section 19J). */
-    public function netWorth(): array
-    {
-        $assets = (string) Account::query()->active()->assets()->sum('cached_balance');
-        $liabilities = (string) Account::query()->active()->liabilities()->sum('cached_balance');
-
-        return [
-            'assets' => $assets,
-            'liabilities' => $liabilities,
-            'net_worth' => bcsub($assets, $liabilities, self::SCALE),
-        ];
-    }
 }

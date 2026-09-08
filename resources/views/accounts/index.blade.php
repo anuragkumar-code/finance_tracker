@@ -24,18 +24,30 @@
         <div class="card h-100"><div class="card-body">
             <div class="stat-label">You own</div>
             <div class="stat-value money money-pos">@inr($netWorth['assets'])</div>
+            <div class="small text-body-secondary mt-1">bank, cash &amp; investments</div>
         </div></div>
     </div>
     <div class="col-md-4">
         <div class="card h-100"><div class="card-body">
             <div class="stat-label">You owe</div>
             <div class="stat-value money money-neg">@inr($netWorth['liabilities'])</div>
+            <div class="small text-body-secondary mt-1">
+                @inr($netWorth['card_debt']) cards ·
+                @inr($netWorth['loan_debt']) loans
+            </div>
         </div></div>
     </div>
     <div class="col-md-4">
         <div class="card h-100"><div class="card-body">
             <div class="stat-label">Net worth</div>
-            <div class="stat-value money">@inr($netWorth['net_worth'])</div>
+            <div class="stat-value money {{ bccomp($netWorth['net_worth'], '0', 2) === -1 ? 'money-neg' : '' }}">
+                @inr($netWorth['net_worth'])
+            </div>
+            {{-- Loan debt is remaining EMIs, so it includes future interest
+                 (design doc D11). Say so rather than let the figure mislead. --}}
+            <div class="small text-body-secondary mt-1">
+                loan debt counts all remaining EMIs, interest included
+            </div>
         </div></div>
     </div>
 </div>

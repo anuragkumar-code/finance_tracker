@@ -146,19 +146,6 @@ class SpendingReportService
         return $this->decimal(Account::query()->active()->spendableCash()->sum('cached_balance'));
     }
 
-    /** @return array{assets: string, liabilities: string, net_worth: string} */
-    public function netWorth(): array
-    {
-        $assets = $this->decimal(Account::query()->active()->assets()->sum('cached_balance'));
-        $liabilities = $this->decimal(Account::query()->active()->liabilities()->sum('cached_balance'));
-
-        return [
-            'assets' => $assets,
-            'liabilities' => $liabilities,
-            'net_worth' => bcsub($assets, $liabilities, self::SCALE),
-        ];
-    }
-
     private function assetLegs(string $start, string $end, BalanceEffect $effect)
     {
         return Transaction::query()

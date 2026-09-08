@@ -17,6 +17,7 @@ class AccountController extends Controller
 {
     public function __construct(
         private readonly AccountBalanceService $balances,
+        private readonly \App\Services\Reporting\NetWorthService $netWorth,
     ) {}
 
     public function index(Request $request): View
@@ -30,7 +31,7 @@ class AccountController extends Controller
 
         return view('accounts.index', [
             'accounts' => $accounts->groupBy(fn (Account $a) => $a->type->label()),
-            'netWorth' => $this->balances->netWorth(),
+            'netWorth' => $this->netWorth->summary(),
             'owners' => Person::query()->active()->payers()->ordered()->get(),
             'selectedOwner' => $owner,
         ]);

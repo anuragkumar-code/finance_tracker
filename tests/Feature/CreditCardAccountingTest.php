@@ -414,4 +414,53 @@ class CreditCardAccountingTest extends TestCase
 
         $this->assertSame([], $this->balances->recalculateAll());
     }
+    public function test_the_due_date_lands_in_the_right_month_for_both_cycle_shapes(): void
+    {
+        // Due day AFTER the statement day: the bill is due that same month.
+        // (SBI bills on the 7th, due on the 26th.)
+        $sbiAccount = $this->account('SBI Card', AccountType::CreditCard);
+        $sbi = CreditCard::create([
+            'account_id' => $sbiAccount->id, 'card_name' => 'SBI',
+            'credit_limit' => '100000', 'statement_day' => 7, 'payment_due_day' => 26,
+        ]);
+
+        $statement = $sbi->statementDateFor(2026, 9);
+        $this->assertSame('2026-09-07', $statement->toDateString());
+        $this->assertSame('2026-09-26', $sbi->dueDateFor($statement)->toDateString());
+
+        // Due day BEFORE the statement day: the bill rolls into the next month.
+        // (Kotak bills on the 21st, due on the 7th.)
+        $kotakAccount = $this->account('Kotak Card', AccountType::CreditCard);
+        $kotak = CreditCard::create([
+            'account_id' => $kotakAccount->id, 'card_name' => 'Kotak',
+            'credit_limit' => '100000', 'statement_day' => 21, 'payment_due_day' => 7,
+        ]);
+
+        $statement = $kotak->statementDateFor(2026, 9);
+        $this->assertSame('2026-09-21', $statement->toDateString());
+        $this->assertSame('2026-10-07', $kotak->dueDateFor($statement)->toDateString());
+    }
+
+    public function test_a_grace_period_is_never_absurdly_long(): void
+    {
+        // Guards the bug this replaced: treating every card as "due next month"
+        // handed cards like SBI a 49-day grace period and pushed their bill out
+        // of the window where the household needed to see it.
+        foreach ([[7, 26], [16, 29], [11, 29], [21, 7], [25, 5], [15, 1]] as [$stmtDay, $dueDay]) {
+            $account = $this->account("Card {$stmtDay}-{$dueDay}", AccountType::CreditCard);
+            $card = CreditCard::create([
+                'account_id' => $account->id, 'card_name' => "Card {$stmtDay}-{$dueDay}",
+                'credit_limit' => '100000', 'statement_day' => $stmtDay, 'payment_due_day' => $dueDay,
+            ]);
+
+            $statement = $card->statementDateFor(2026, 9);
+            $grace = $statement->diffInDays($card->dueDateFor($statement));
+
+            $this->assertGreaterThan(0, $grace, "Card {$stmtDay}/{$dueDay} has a non-positive grace period.");
+            $this->assertLessThanOrEqual(
+                31, $grace,
+                "Card {$stmtDay}/{$dueDay} got a {$grace}-day grace period, which no real card gives."
+            );
+        }
+    }
 }

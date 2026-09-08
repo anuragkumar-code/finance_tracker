@@ -19,6 +19,7 @@ class DashboardController extends Controller
         private readonly CreditCardService $cards,
         private readonly UpcomingObligationsService $upcoming,
         private readonly LoanService $loans,
+        private readonly \App\Services\Reporting\NetWorthService $netWorth,
     ) {}
 
     public function index(Request $request): View
@@ -37,7 +38,7 @@ class DashboardController extends Controller
             'cardSpending' => $this->reports->creditCardSpending($start, $end),
             'netCashMovement' => $this->reports->netCashMovement($start, $end),
             'spendableCash' => $this->reports->spendableCash(),
-            'netWorth' => $this->reports->netWorth(),
+            'netWorth' => $this->netWorth->summary(),
 
             'byCategory' => $this->reports->byCategory($start, $end),
             'byPlanned' => $this->reports->groupedBy('planned_status', $start, $end),
