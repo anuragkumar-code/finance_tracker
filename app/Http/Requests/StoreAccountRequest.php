@@ -26,6 +26,8 @@ class StoreAccountRequest extends FormRequest
             'opening_balance_date' => ['required', 'date'],
             'currency' => ['nullable', 'string', 'size:3'],
             'is_active' => ['nullable', 'boolean'],
+            'is_set_aside' => ['nullable', 'boolean'],
+            'set_aside_reason' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
         ];
     }

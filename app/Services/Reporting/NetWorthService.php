@@ -2,7 +2,9 @@
 
 namespace App\Services\Reporting;
 
+use App\Enums\AccountType;
 use App\Models\Account;
+use App\Models\Asset;
 use App\Models\Loan;
 
 /**
@@ -13,11 +15,19 @@ use App\Models\Loan;
  * Accounts page could report a healthy net worth while ignoring lakhs of loan
  * debt. A number that wrong is worse than no number at all.
  *
- * Loan debt here is REMAINING CASH TO PAY (remaining EMIs x EMI amount), which
- * includes future interest, because the simplified loan model tracks EMIs
- * rather than principal (design doc D11). That overstates debt relative to a
- * lender's payoff quote, deliberately — the conservative direction — and every
- * screen showing it says so.
+ * Two things this deliberately does NOT do:
+ *
+ * - It does not exclude set-aside money. An emergency fund is not spendable, but
+ *   the household still owns it; leaving it out would understate their position
+ *   as badly as leaving out the loans overstated it. It is reported separately
+ *   so the distinction stays visible.
+ * - It does not guess at the value of an unvalued asset. Those are counted and
+ *   reported as a caveat instead, so a partial picture is never mistaken for a
+ *   complete one.
+ *
+ * Loan debt is REMAINING CASH TO PAY (remaining EMIs x EMI amount), which
+ * includes future interest, because the simplified loan model tracks EMIs rather
+ * than principal (design doc D11) — the conservative direction, and labelled.
  */
 class NetWorthService
 {
@@ -25,33 +35,38 @@ class NetWorthService
 
     /**
      * @return array{
-     *     bank_cash: string, investments: string, other_assets: string, assets: string,
+     *     bank_cash: string, set_aside: string, investments: string, asset_value: string,
+     *     account_assets: string, assets: string,
      *     card_debt: string, other_liabilities: string, loan_debt: string, liabilities: string,
-     *     net_worth: string
+     *     net_worth: string, unvalued_assets: int
      * }
      */
     public function summary(): array
     {
-        $bankCash = $this->sum(Account::query()->active()->spendableCash());
-        $investments = $this->sum(Account::query()->active()->ofType(\App\Enums\AccountType::Investment));
-        $otherAssets = $this->sum(Account::query()->active()->ofType(\App\Enums\AccountType::OtherAsset));
+        $spendable = $this->sumAccounts(Account::query()->active()->spendableCash());
+        $setAside = $this->sumAccounts(Account::query()->active()->setAside());
+        $investments = $this->sumAccounts(Account::query()->active()->ofType(AccountType::Investment));
 
-        $assets = $this->sum(Account::query()->active()->assets());
+        $accountAssets = $this->sumAccounts(Account::query()->active()->assets());
+        $assetValue = $this->assetValue();
+        $assets = bcadd($accountAssets, $assetValue, self::SCALE);
 
-        $cardDebt = $this->sum(Account::query()->active()->ofType(\App\Enums\AccountType::CreditCard));
-        $otherLiabilities = $this->sum(Account::query()->active()->ofType(\App\Enums\AccountType::OtherLiability));
+        $cardDebt = $this->sumAccounts(Account::query()->active()->ofType(AccountType::CreditCard));
+        $otherLiabilities = $this->sumAccounts(Account::query()->active()->ofType(AccountType::OtherLiability));
         $loanDebt = $this->loanDebt();
 
         $liabilities = bcadd(
-            $this->sum(Account::query()->active()->liabilities()),
+            $this->sumAccounts(Account::query()->active()->liabilities()),
             $loanDebt,
             self::SCALE,
         );
 
         return [
-            'bank_cash' => $bankCash,
+            'bank_cash' => $spendable,
+            'set_aside' => $setAside,
             'investments' => $investments,
-            'other_assets' => $otherAssets,
+            'asset_value' => $assetValue,
+            'account_assets' => $accountAssets,
             'assets' => $assets,
 
             'card_debt' => $cardDebt,
@@ -60,6 +75,7 @@ class NetWorthService
             'liabilities' => $liabilities,
 
             'net_worth' => bcsub($assets, $liabilities, self::SCALE),
+            'unvalued_assets' => Asset::query()->active()->whereNull('current_value')->count(),
         ];
     }
 
@@ -72,7 +88,13 @@ class NetWorthService
         );
     }
 
-    private function sum($query): string
+    /** Only assets someone has actually put a number on. */
+    public function assetValue(): string
+    {
+        return bcadd((string) Asset::query()->active()->valued()->sum('current_value'), '0', self::SCALE);
+    }
+
+    private function sumAccounts($query): string
     {
         return bcadd((string) $query->sum('cached_balance'), '0', self::SCALE);
     }

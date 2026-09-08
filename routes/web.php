@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AssetController;
 use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\CreditCardPaymentController;
 use App\Http\Controllers\CreditCardStatementController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\QuickEntryController;
 use App\Http\Controllers\RecurringTransactionController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UpcomingController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\MerchantController;
@@ -82,6 +84,22 @@ Route::post('/recurring/occurrences/{occurrence}/confirm', [RecurringTransaction
     ->name('recurring.occurrences.confirm');
 Route::post('/recurring/occurrences/{occurrence}/skip', [RecurringTransactionController::class, 'skip'])
     ->name('recurring.occurrences.skip');
+
+/*
+ * Reports (spec section 19). Every figure comes from the reporting services and
+ * links back into the transaction list filtered the same way, so any number can
+ * be opened up and checked.
+ */
+Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+Route::get('/reports/trends', [ReportController::class, 'trends'])->name('reports.trends');
+Route::get('/reports/net-worth', [ReportController::class, 'netWorth'])->name('reports.net-worth');
+Route::get('/reports/credit-cards', [ReportController::class, 'creditCards'])->name('reports.credit-cards');
+
+// Things owned outside accounts — land, vehicles.
+Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
+Route::post('/assets', [AssetController::class, 'store'])->name('assets.store');
+Route::put('/assets/{asset}', [AssetController::class, 'update'])->name('assets.update');
+Route::delete('/assets/{asset}', [AssetController::class, 'destroy'])->name('assets.destroy');
 
 // What is committed, and what that leaves.
 Route::get('/upcoming', [UpcomingController::class, 'index'])->name('upcoming.index');

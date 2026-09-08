@@ -116,3 +116,38 @@ confirm at a different amount when the actual bill differs, or skip a month.
 **Upcoming** answers "how much can I actually spend": bank and cash, minus
 everything committed in the next 7/30/60/90 days. Amounts from recurring
 commitments are labelled *estimate*; EMIs and issued card bills are fixed.
+
+## Set-aside money (emergency funds)
+
+An account can be marked **Set aside** from Accounts → Edit. That account's money
+is excluded from every "what can we spend" figure — available balance, the
+dashboard, and "realistically available" — so an emergency fund never quietly
+becomes part of the budget.
+
+It is still counted in **net worth**, because you do own it. Leaving it out there
+would understate your real position as badly as ignoring your loans would
+overstate it. The Accounts and Net worth screens show it as a separate
+"set aside" line so the distinction stays visible.
+
+## Assets
+
+Things you own outside your accounts — land, a vehicle. **Value is optional**: an
+asset with no value recorded still appears on the list and can be linked to the
+loan that bought it, which is useful for seeing what the debt is against.
+
+An unvalued asset contributes nothing to net worth. Since net worth counts every
+rupee you owe, having unvalued assets makes the figure more pessimistic than
+reality, and the Net worth screen says so rather than presenting a partial
+picture as a complete one.
+
+## Reports (Phase 4)
+
+- **Reports** — one month, cut by category, subcategory, merchant, payer,
+  beneficiary, account, purpose, and planned vs unplanned, plus a week-by-week
+  breakdown. Every figure links into the transaction list filtered the same way,
+  so any number can be opened and checked.
+- **Trends** — 3/6/12 months side by side, with a category grid showing how
+  spending shifts over time.
+- **Net worth** — the balance sheet: accounts and assets against cards and loans.
+- **Card report** — purchases and bill payments shown as separate columns, never
+  added together.

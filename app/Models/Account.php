@@ -26,6 +26,8 @@ class Account extends Model
         'cached_balance_as_of',
         'currency',
         'is_active',
+        'is_set_aside',
+        'set_aside_reason',
         'notes',
     ];
 
@@ -39,6 +41,7 @@ class Account extends Model
             'cached_balance' => 'decimal:2',
             'cached_balance_as_of' => 'datetime',
             'is_active' => 'boolean',
+            'is_set_aside' => 'boolean',
         ];
     }
 
@@ -96,10 +99,28 @@ class Account extends Model
         return $query->whereIn('type', $values);
     }
 
-    /** Bank + cash only — the "money we can actually spend today" set. */
+    /**
+     * Bank + cash the household could actually spend today.
+     *
+     * Set-aside accounts (an emergency fund) are excluded: the money exists, but
+     * treating it as spendable is how it stops being an emergency fund.
+     */
     public function scopeSpendableCash(Builder $query): Builder
     {
+        return $query
+            ->whereIn('type', [AccountType::Bank->value, AccountType::Cash->value])
+            ->where('is_set_aside', false);
+    }
+
+    /** Bank + cash including anything ring-fenced — for net worth, not for spending. */
+    public function scopeAllCash(Builder $query): Builder
+    {
         return $query->whereIn('type', [AccountType::Bank->value, AccountType::Cash->value]);
+    }
+
+    public function scopeSetAside(Builder $query): Builder
+    {
+        return $query->where('is_set_aside', true);
     }
 
     public function scopeAssets(Builder $query): Builder

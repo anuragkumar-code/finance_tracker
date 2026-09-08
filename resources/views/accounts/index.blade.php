@@ -24,7 +24,12 @@
         <div class="card h-100"><div class="card-body">
             <div class="stat-label">You own</div>
             <div class="stat-value money money-pos">@inr($netWorth['assets'])</div>
-            <div class="small text-body-secondary mt-1">bank, cash &amp; investments</div>
+            <div class="small text-body-secondary mt-1">
+                @inr($netWorth['bank_cash']) available
+                @if (bccomp($netWorth['set_aside'], '0', 2) === 1)
+                    · @inr($netWorth['set_aside']) set aside
+                @endif
+            </div>
         </div></div>
     </div>
     <div class="col-md-4">
@@ -86,6 +91,12 @@
                             <a href="{{ route('accounts.show', $account) }}" class="text-decoration-none fw-medium">
                                 {{ $account->name }}
                             </a>
+                            @if ($account->is_set_aside)
+                                <span class="badge text-bg-info ms-1"
+                                      title="Not counted as money available to spend">
+                                    {{ $account->set_aside_reason ?: 'set aside' }}
+                                </span>
+                            @endif
                             @unless ($account->is_active)
                                 <span class="badge text-bg-secondary ms-1">inactive</span>
                             @endunless

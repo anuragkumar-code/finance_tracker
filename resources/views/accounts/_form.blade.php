@@ -93,6 +93,32 @@
         <textarea name="notes" id="notes" class="form-control" rows="2">{{ old('notes', $account?->notes) }}</textarea>
     </div>
 
+    {{-- An emergency fund is real money that must never read as spendable. --}}
+    <div class="col-12">
+        <div class="form-check">
+            <input type="hidden" name="is_set_aside" value="0">
+            <input type="checkbox" name="is_set_aside" id="is_set_aside" value="1" class="form-check-input"
+                   @checked(old('is_set_aside', $account?->is_set_aside))>
+            <label class="form-check-label" for="is_set_aside">
+                Set aside — don't count this as money we can spend
+            </label>
+        </div>
+        <div class="form-text">
+            For an emergency fund or anything ring-fenced. It is left out of your available
+            balance and out of "realistically available", so it never tempts a decision.
+            It still counts towards net worth, because you do own it.
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <label for="set_aside_reason" class="form-label">
+            What it is for <span class="text-body-secondary">(optional)</span>
+        </label>
+        <input type="text" name="set_aside_reason" id="set_aside_reason" class="form-control"
+               value="{{ old('set_aside_reason', $account?->set_aside_reason) }}"
+               placeholder="Emergency fund">
+    </div>
+
     @if ($account)
         <div class="col-12">
             <div class="form-check">

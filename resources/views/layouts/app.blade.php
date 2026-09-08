@@ -187,12 +187,17 @@
                        href="{{ route('recurring.index') }}">Recurring</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('assets.*') ? 'active' : '' }}"
+                       href="{{ route('assets.index') }}">Assets</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('upcoming.*') ? 'active' : '' }}"
                        href="{{ route('upcoming.index') }}">Upcoming</a>
                 </li>
-
-                <li class="nav-section">Coming next</li>
-                <li class="nav-item"><span class="nav-link disabled">Reports</span></li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}"
+                       href="{{ route('reports.index') }}">Reports</a>
+                </li>
 
                 <li class="nav-section">Settings</li>
                 <li class="nav-item">
