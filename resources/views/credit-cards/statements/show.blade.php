@@ -1,158 +1,149 @@
 @extends('layouts.app')
 
 @section('title', 'Statement')
-@section('heading', $card->card_name . ' statement')
-@section('subheading', $statement->period_start->format('d M') . ' – ' . $statement->period_end->format('d M Y'))
+@section('heading', $card->card_name.' statement')
+@section('subheading', $statement->period_start->format('d M').' – '.$statement->period_end->format('d M Y'))
 
 @section('actions')
-    <div class="d-flex gap-2">
-        @unless ($statement->status->isSettled())
-            <a href="{{ route('credit-cards.payments.create', ['creditCard' => $card, 'statement' => $statement->id]) }}"
-               class="btn btn-sm btn-primary">Pay this bill</a>
-        @endunless
-        <a href="{{ route('credit-cards.show', $card) }}" class="btn btn-sm btn-outline-secondary">Back to card</a>
-    </div>
+    @unless ($statement->status->isSettled())
+        <x-ui.button :href="route('credit-cards.payments.create', ['creditCard' => $card, 'statement' => $statement->id])">
+            Pay this bill
+        </x-ui.button>
+    @endunless
+    <x-ui.button :href="route('credit-cards.show', $card)" variant="outline">Back to card</x-ui.button>
 @endsection
 
 @section('content')
 
-<div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="stat-label">Statement amount</div>
-            <div class="stat-value money">@inr($statement->statement_amount)</div>
-        </div></div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="stat-label">Paid</div>
-            <div class="stat-value money money-pos">@inr($statement->amountPaid())</div>
-        </div></div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="stat-label">Remaining</div>
-            <div class="stat-value money">@inr($statement->balanceRemaining())</div>
-        </div></div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="stat-label">Due by</div>
-            <div class="stat-value {{ $statement->isOverdue() ? 'text-danger' : '' }}">
-                {{ $statement->due_date->format('d M') }}
-            </div>
-            <span class="badge text-bg-{{ $statement->status->badgeClass() }}">
-                {{ $statement->status->label() }}
-            </span>
-        </div></div>
+<div class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+    <x-ui.stat label="Statement amount" :value="\App\Support\Money::inr($statement->statement_amount)" />
+    <x-ui.stat label="Paid" tone="income" :value="\App\Support\Money::inr($statement->amountPaid())" />
+    <x-ui.stat label="Remaining" :value="\App\Support\Money::inr($statement->balanceRemaining())" />
+    <div class="rounded-xl border border-border bg-card px-5 py-4 shadow-xs">
+        <p class="text-xs font-medium text-muted-foreground">Due by</p>
+        <p class="mt-1.5 text-2xl font-semibold tracking-tight {{ $statement->isOverdue() ? 'text-destructive' : '' }}">
+            {{ $statement->due_date->format('d M') }}
+        </p>
+        <div class="mt-1.5">
+            <x-ui.badge :variant="match($statement->status->value) {
+                'paid' => 'success', 'overdue' => 'destructive',
+                'partially_paid' => 'warning', default => 'default',
+            }">{{ $statement->status->label() }}</x-ui.badge>
+        </div>
     </div>
 </div>
 
 @if (bccomp($discrepancy, '0', 2) !== 0)
-    {{-- Never silently reconciled away: a gap here is real information. --}}
-    <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div>
-            <strong>This statement is @inr($discrepancy) away from the purchases recorded for the period.</strong>
-            <div class="small">
-                Either a purchase is missing from the app, or something posted outside these dates.
-                Compare the list below against your real statement.
+    {{-- Never quietly reconciled away: a gap here is real information. --}}
+    <div class="mt-4">
+        <x-ui.alert variant="warning"
+            :title="'This statement is '.\App\Support\Money::inr($discrepancy).' away from the purchases recorded for the period'">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <span>
+                    Either a purchase is missing from the app, or something posted outside these
+                    dates. Compare the list below against your real statement.
+                </span>
+                <form method="POST" action="{{ route('credit-cards.statements.regenerate', [$card, $statement]) }}">
+                    @csrf
+                    <x-ui.button type="submit" variant="outline" size="sm">Re-link transactions</x-ui.button>
+                </form>
             </div>
-        </div>
-        <form method="POST" action="{{ route('credit-cards.statements.regenerate', [$card, $statement]) }}">
-            @csrf
-            <button class="btn btn-sm btn-outline-dark text-nowrap">Re-link transactions</button>
-        </form>
+        </x-ui.alert>
     </div>
 @endif
 
-<div class="row g-3">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Purchases on this statement</span>
-                <span class="small text-body-secondary">{{ $statement->items->count() }} items</span>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Details</th>
-                            <th>Category</th>
-                            <th class="text-end">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @forelse ($statement->items as $item)
-                        @php($t = $item->transaction)
-                        <tr>
-                            <td class="text-nowrap">{{ $t?->transaction_date?->format('d M') ?? '—' }}</td>
-                            <td>
-                                @if ($t)
-                                    <a href="{{ route('transactions.show', $t) }}" class="text-decoration-none">
-                                        {{ $t->description ?: $t->merchant?->name ?: 'Purchase' }}
-                                    </a>
-                                @else
-                                    <span class="text-body-secondary">Transaction removed</span>
-                                @endif
-                            </td>
-                            <td class="text-body-secondary">{{ $t?->category?->name ?: '—' }}</td>
-                            <td class="text-end money">
-                                @inr($item->amount_snapshot)
-                                @if ($t && bccomp((string) $item->amount_snapshot, (string) $t->amount, 2) !== 0)
-                                    <div class="small text-warning-emphasis">now @inr($t->amount)</div>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="4" class="empty-state">No purchases were grouped into this statement.</td></tr>
-                    @endforelse
-                    </tbody>
-                    <tfoot class="border-top">
-                        <tr>
-                            <th colspan="3">Grouped total</th>
-                            <th class="text-end money">@inr($statement->items->sum('amount_snapshot'))</th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
+<div class="mt-4 grid gap-4 lg:grid-cols-12">
+    <div class="lg:col-span-8">
+        <x-ui.card>
+            <x-ui.card-header title="Purchases on this statement"
+                :description="$statement->items->count().' items'" />
+            <x-ui.card-content flush>
+                @if ($statement->items->isEmpty())
+                    <x-ui.empty-state icon="inbox" title="Nothing grouped"
+                        description="No purchases were linked into this statement." />
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-border text-left">
+                                    <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Date</th>
+                                    <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Details</th>
+                                    <th scope="col" class="hidden px-5 py-2.5 text-xs font-medium text-muted-foreground sm:table-cell">Category</th>
+                                    <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border">
+                            @foreach ($statement->items as $item)
+                                @php($t = $item->transaction)
+                                <tr class="transition-colors hover:bg-muted/60">
+                                    <td class="whitespace-nowrap px-5 py-3 text-muted-foreground tabular">
+                                        {{ $t?->transaction_date?->format('d M') ?? '—' }}
+                                    </td>
+                                    <td class="px-5 py-3">
+                                        @if ($t)
+                                            <a href="{{ route('transactions.show', $t) }}" class="hover:underline">
+                                                {{ $t->description ?: $t->merchant?->name ?: 'Purchase' }}
+                                            </a>
+                                        @else
+                                            <span class="text-muted-foreground">Transaction removed</span>
+                                        @endif
+                                    </td>
+                                    <td class="hidden px-5 py-3 text-muted-foreground sm:table-cell">
+                                        {{ $t?->category?->name ?: '—' }}
+                                    </td>
+                                    <td class="px-5 py-3 text-right">
+                                        <x-finance.money :amount="$item->amount_snapshot" />
+                                        @if ($t && bccomp((string) $item->amount_snapshot, (string) $t->amount, 2) !== 0)
+                                            <p class="text-xs text-warning">
+                                                now {{ \App\Support\Money::inr($t->amount) }}
+                                            </p>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-border px-5 py-2.5">
+                        <span class="text-xs font-medium text-muted-foreground">Grouped total</span>
+                        <x-finance.money :amount="$statement->items->sum('amount_snapshot')" tone="strong" class="text-sm" />
+                    </div>
+                @endif
+            </x-ui.card-content>
+        </x-ui.card>
     </div>
 
-    <div class="col-lg-4">
-        <div class="card mb-3">
-            <div class="card-header">Payments against this bill</div>
-            <div class="card-body p-0">
+    <div class="space-y-4 lg:col-span-4">
+        <x-ui.card>
+            <x-ui.card-header title="Payments against this bill" />
+            <x-ui.card-content flush>
                 @if ($statement->payments->isEmpty())
-                    <div class="empty-state">Not paid yet.</div>
+                    <x-ui.empty-state icon="banknote" title="Not paid yet" />
                 @else
-                    <table class="table table-sm mb-0">
-                        <tbody>
+                    <ul class="divide-y divide-border">
                         @foreach ($statement->payments as $payment)
-                            <tr>
-                                <td class="text-nowrap text-body-secondary small">
+                            <li class="flex items-center gap-3 px-5 py-2.5">
+                                <span class="w-11 shrink-0 text-xs text-muted-foreground tabular">
                                     {{ $payment->payment_date->format('d M') }}
-                                </td>
-                                <td class="small">{{ $payment->sourceAccount->name }}</td>
-                                <td class="text-end money">@inr($payment->amount)</td>
-                            </tr>
+                                </span>
+                                <span class="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+                                    {{ $payment->sourceAccount->name }}
+                                </span>
+                                <x-finance.money :amount="$payment->amount" class="text-sm" />
+                            </li>
                         @endforeach
-                        </tbody>
-                    </table>
+                    </ul>
                 @endif
-            </div>
-        </div>
+            </x-ui.card-content>
+        </x-ui.card>
 
-        <div class="card">
-            <div class="card-body small text-body-secondary">
-                This statement created no new expense. Every purchase listed here was already
-                counted as spending on the day it happened.
-                @if ($statement->notes)
-                    <div class="mt-2 text-body">{{ $statement->notes }}</div>
-                @endif
-            </div>
-        </div>
+        <x-ui.alert variant="muted" icon="info">
+            This statement created no new expense. Every purchase listed here was already counted
+            as spending on the day it happened.
+            @if ($statement->notes)
+                <span class="mt-2 block text-foreground">{{ $statement->notes }}</span>
+            @endif
+        </x-ui.alert>
     </div>
 </div>
-
 @endsection

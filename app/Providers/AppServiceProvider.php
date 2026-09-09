@@ -20,7 +20,9 @@ class AppServiceProvider extends ServiceProvider
         Blade::directive('inr', fn (string $expression) => "<?php echo \\App\\Support\\Money::inr({$expression}); ?>");
         Blade::directive('inrc', fn (string $expression) => "<?php echo \\App\\Support\\Money::compact({$expression}); ?>");
 
-        // The UI is Bootstrap 5, not Laravel's default Tailwind pagination markup.
-        Paginator::useBootstrapFive();
+        // Pagination renders through our own Blade view so it matches the
+        // design system rather than shipping framework defaults.
+        Paginator::defaultView('components.ui.pagination');
+        Paginator::defaultSimpleView('components.ui.pagination');
     }
 }

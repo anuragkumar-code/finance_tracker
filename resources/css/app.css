@@ -1,11 +1,212 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+/*
+ * Blade templates are the only source of class names — there is no JS build
+ * step here, so Tailwind is pointed at the views directly.
+ */
+@source "../views/**/*.blade.php";
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+/*
+ * Design tokens.
+ *
+ * Semantic names, never raw colours in templates: a card is `bg-card`, not
+ * `bg-white`. Everything resolves through CSS custom properties so dark mode
+ * can arrive later by redefining the variables rather than touching components.
+ *
+ * The palette is a neutral slate with one restrained accent. This is finance
+ * software — colour carries meaning (money in, money out, debt) and is wasted
+ * if spent on decoration.
+ */
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+
+    /* Financial meaning, kept separate from UI state so the two can diverge. */
+    --color-income: var(--income);
+    --color-expense: var(--expense);
+    --color-debt: var(--debt);
+
+    --font-sans: "Inter var", "Inter", ui-sans-serif, system-ui, -apple-system,
+        "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
+
+    --radius-card: 0.75rem;
+}
+
+:root {
+    --background: oklch(0.985 0.002 247);
+    --foreground: oklch(0.21 0.02 258);
+
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.21 0.02 258);
+
+    --muted: oklch(0.968 0.004 247);
+    --muted-foreground: oklch(0.554 0.02 257);
+
+    --border: oklch(0.923 0.005 248);
+    --input: oklch(0.923 0.005 248);
+    --ring: oklch(0.62 0.14 253);
+
+    /* Dark slate rather than a saturated brand blue: calmer, and it keeps
+       actual colour available for financial meaning. */
+    --primary: oklch(0.28 0.03 258);
+    --primary-foreground: oklch(0.985 0.002 247);
+
+    --secondary: oklch(0.968 0.004 247);
+    --secondary-foreground: oklch(0.28 0.03 258);
+
+    --accent: oklch(0.968 0.004 247);
+    --accent-foreground: oklch(0.28 0.03 258);
+
+    --destructive: oklch(0.58 0.19 27);
+    --destructive-foreground: oklch(0.985 0.002 247);
+
+    --success: oklch(0.55 0.13 152);
+    --success-foreground: oklch(0.985 0.002 247);
+
+    --warning: oklch(0.68 0.15 70);
+    --warning-foreground: oklch(0.21 0.02 258);
+
+    --info: oklch(0.58 0.12 240);
+    --info-foreground: oklch(0.985 0.002 247);
+
+    --income: oklch(0.52 0.13 152);
+    --expense: oklch(0.55 0.18 27);
+    --debt: oklch(0.55 0.12 40);
+
+    /* Sidebar reads as a distinct surface, not just a darker page. */
+    --sidebar: oklch(0.21 0.02 258);
+    --sidebar-foreground: oklch(0.86 0.01 250);
+    --sidebar-muted: oklch(0.62 0.02 254);
+    --sidebar-accent: oklch(0.28 0.025 258);
+    --sidebar-border: oklch(0.30 0.02 258);
+}
+
+@layer base {
+    * {
+        border-color: var(--border);
+    }
+
+    body {
+        background-color: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    /* Money must line up column to column, or a table of figures cannot be
+       scanned at a glance. */
+    .tabular {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum";
+    }
+
+    /* A visible focus ring everywhere, not just where it was remembered. */
+    :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+
+    ::placeholder {
+        color: var(--muted-foreground);
+    }
+}
+
+@layer components {
+    /*
+     * Chips are used heavily in Quick Entry, where the radio input itself is
+     * hidden and the label carries the whole visual state. Expressing that as
+     * one component keeps the checked/hover/focus states identical everywhere.
+     */
+    .chip > input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .chip > span {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.0625rem;
+        padding: 0.4375rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        background-color: var(--card);
+        color: var(--foreground);
+        font-size: 0.8125rem;
+        line-height: 1.15rem;
+        cursor: pointer;
+        user-select: none;
+        transition: background-color 120ms ease, border-color 120ms ease,
+            color 120ms ease, box-shadow 120ms ease;
+    }
+
+    .chip > span:hover {
+        background-color: var(--muted);
+        border-color: oklch(0.87 0.008 248);
+    }
+
+    .chip > input:checked + span {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: var(--primary-foreground);
+    }
+
+    .chip > input:checked + span .chip-meta {
+        color: oklch(0.82 0.01 250);
+    }
+
+    .chip > input:focus-visible + span {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+
+    .chip > input:disabled + span {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .chip-meta {
+        font-size: 0.6875rem;
+        color: var(--muted-foreground);
+    }
+}
+
+/* Alpine sets x-cloak until it boots; without this, dropdown contents flash. */
+[x-cloak] {
+    display: none !important;
 }

@@ -5,167 +5,166 @@
 @section('subheading', $transaction->transaction_date->format('d M Y'))
 
 @section('actions')
-    @if (! $transaction->trashed())
-        <div class="d-flex gap-2">
-            <a href="{{ route('transactions.edit', $transaction) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#voidModal">Void</button>
-        </div>
-    @endif
+    @unless ($transaction->trashed())
+        <x-ui.button :href="route('transactions.edit', $transaction)" variant="outline" icon="pencil">Edit</x-ui.button>
+        <x-ui.button variant="outline" icon="trash-2"
+            x-on:click="$dispatch('open-dialog', 'void-transaction')"
+            class="text-destructive hover:bg-destructive/10">Void</x-ui.button>
+    @endunless
+    <x-ui.button :href="route('transactions.index')" variant="ghost">Back</x-ui.button>
 @endsection
 
 @section('content')
 
 @if ($transaction->trashed())
-    <div class="alert alert-secondary d-flex justify-content-between align-items-center">
-        <div>
-            <strong>Voided.</strong>
-            This entry no longer affects any balance.
-            @if ($transaction->void_reason)
-                <div class="small">Reason: {{ $transaction->void_reason }}</div>
-            @endif
-        </div>
-        <form method="POST" action="{{ route('transactions.restore', $transaction->id) }}">
-            @csrf
-            <button class="btn btn-sm btn-outline-secondary">Restore</button>
-        </form>
+    <div class="mb-4">
+        <x-ui.alert variant="muted" title="This entry is voided">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <span>
+                    It no longer affects any balance.
+                    @if ($transaction->void_reason)
+                        Reason: {{ $transaction->void_reason }}
+                    @endif
+                </span>
+                <form method="POST" action="{{ route('transactions.restore', $transaction->id) }}">
+                    @csrf
+                    <x-ui.button type="submit" variant="outline" size="sm" icon="undo-2">Restore</x-ui.button>
+                </form>
+            </div>
+        </x-ui.alert>
     </div>
 @endif
 
-<div class="row g-3">
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-4">
+<div class="grid gap-4 lg:grid-cols-12">
+    <div class="lg:col-span-7">
+        <x-ui.card>
+            <x-ui.card-content class="!py-6">
+                <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <div class="stat-label">{{ $transaction->type->label() }}</div>
-                        <div class="display-6 money">@inr($transaction->amount)</div>
+                        <p class="text-xs font-medium text-muted-foreground">{{ $transaction->type->label() }}</p>
+                        <p class="mt-1 text-3xl font-semibold tracking-tight tabular">
+                            {{ \App\Support\Money::inr($transaction->amount) }}
+                        </p>
                     </div>
-                    <div class="text-end">
-                        <div class="stat-label">Account</div>
-                        <a href="{{ route('accounts.show', $transaction->account) }}" class="text-decoration-none">
-                            {{ $transaction->account->name }}
-                        </a>
-                        <div class="small text-body-secondary">
+                    <div class="text-right">
+                        <p class="text-xs font-medium text-muted-foreground">Account</p>
+                        <a href="{{ route('accounts.show', $transaction->account) }}"
+                           class="mt-1 block text-sm font-medium hover:underline">{{ $transaction->account->name }}</a>
+                        <p class="text-xs text-muted-foreground">
                             {{ $transaction->balance_effect === \App\Enums\BalanceEffect::Increase ? 'increased' : 'decreased' }}
-                            by @inr($transaction->amount)
-                        </div>
+                            by {{ \App\Support\Money::inr($transaction->amount) }}
+                        </p>
                     </div>
                 </div>
+            </x-ui.card-content>
 
-                <dl class="row mb-0 small">
-                    <dt class="col-sm-4 text-body-secondary fw-normal">Category</dt>
-                    <dd class="col-sm-8">
-                        {{ $transaction->category?->name ?: '—' }}
-                        @if ($transaction->subcategory) &rsaquo; {{ $transaction->subcategory->name }} @endif
-                    </dd>
+            <x-ui.card-content class="border-t border-border">
+                <dl class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                    @foreach ([
+                        'Category' => $transaction->category?->name
+                            .($transaction->subcategory ? ' › '.$transaction->subcategory->name : ''),
+                        'Merchant' => $transaction->merchant?->name,
+                        'Paid by' => $transaction->payer?->name,
+                        'For' => $transaction->beneficiary?->name,
+                        'Purpose' => $transaction->purpose?->label(),
+                    ] as $label => $value)
+                        <div>
+                            <dt class="text-xs text-muted-foreground">{{ $label }}</dt>
+                            <dd class="mt-0.5 text-sm">{{ $value ?: '—' }}</dd>
+                        </div>
+                    @endforeach
 
-                    <dt class="col-sm-4 text-body-secondary fw-normal">Merchant</dt>
-                    <dd class="col-sm-8">{{ $transaction->merchant?->name ?: '—' }}</dd>
-
-                    <dt class="col-sm-4 text-body-secondary fw-normal">Paid by</dt>
-                    <dd class="col-sm-8">{{ $transaction->payer?->name ?: '—' }}</dd>
-
-                    <dt class="col-sm-4 text-body-secondary fw-normal">For</dt>
-                    <dd class="col-sm-8">{{ $transaction->beneficiary?->name ?: '—' }}</dd>
-
-                    <dt class="col-sm-4 text-body-secondary fw-normal">Planned</dt>
-                    <dd class="col-sm-8">
-                        @if ($transaction->planned_status)
-                            <span class="badge text-bg-{{ $transaction->planned_status->badgeClass() }}">
-                                {{ $transaction->planned_status->label() }}
-                            </span>
-                        @else — @endif
-                    </dd>
-
-                    <dt class="col-sm-4 text-body-secondary fw-normal">Purpose</dt>
-                    <dd class="col-sm-8">{{ $transaction->purpose?->label() ?: '—' }}</dd>
+                    <div>
+                        <dt class="text-xs text-muted-foreground">Planned</dt>
+                        <dd class="mt-0.5">
+                            @if ($transaction->planned_status)
+                                <x-ui.badge :variant="match($transaction->planned_status->value) {
+                                    'planned' => 'success', 'emergency' => 'destructive', default => 'warning',
+                                }">{{ $transaction->planned_status->label() }}</x-ui.badge>
+                            @else
+                                <span class="text-sm">—</span>
+                            @endif
+                        </dd>
+                    </div>
 
                     @if ($transaction->notes)
-                        <dt class="col-sm-4 text-body-secondary fw-normal">Notes</dt>
-                        <dd class="col-sm-8">{{ $transaction->notes }}</dd>
+                        <div class="sm:col-span-2">
+                            <dt class="text-xs text-muted-foreground">Notes</dt>
+                            <dd class="mt-0.5 text-sm">{{ $transaction->notes }}</dd>
+                        </div>
                     @endif
                 </dl>
-            </div>
-        </div>
+            </x-ui.card-content>
+        </x-ui.card>
     </div>
 
-    <div class="col-lg-5">
+    <div class="space-y-4 lg:col-span-5">
         @if ($counterpart)
-            <div class="card mb-3">
-                <div class="card-header">The other side of this move</div>
-                <div class="card-body">
-                    <p class="small text-body-secondary">
-                        This is a {{ strtolower($transaction->type->label()) }} between your own accounts, recorded as
-                        two linked entries. It is not counted as spending.
+            <x-ui.card>
+                <x-ui.card-header title="The other side of this move" />
+                <x-ui.card-content>
+                    <p class="text-sm text-muted-foreground">
+                        A {{ strtolower($transaction->type->label()) }} between your own accounts, recorded
+                        as two linked entries. It is not counted as spending.
                     </p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <a href="{{ route('accounts.show', $counterpart->account) }}" class="text-decoration-none">
-                                {{ $counterpart->account->name }}
-                            </a>
-                            <div class="small text-body-secondary">{{ $counterpart->leg_role->label() }}</div>
+                    <div class="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+                        <div class="min-w-0">
+                            <a href="{{ route('accounts.show', $counterpart->account) }}"
+                               class="text-sm font-medium hover:underline">{{ $counterpart->account->name }}</a>
+                            <p class="text-xs text-muted-foreground">{{ $counterpart->leg_role->label() }}</p>
                         </div>
-                        <div class="money">@inr($counterpart->amount)</div>
+                        <x-finance.money :amount="$counterpart->amount" class="text-sm" />
                     </div>
-                </div>
-            </div>
+                </x-ui.card-content>
+            </x-ui.card>
         @endif
 
         @if ($transaction->splits->isNotEmpty())
-            <div class="card mb-3">
-                <div class="card-header">Split</div>
-                <table class="table table-sm mb-0">
-                    <tbody>
-                    @foreach ($transaction->splits as $split)
-                        <tr>
-                            <td>{{ $split->category?->name ?: ($split->notes ?: 'Part') }}</td>
-                            <td class="text-end money">@inr($split->amount)</td>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                </table>
-            </div>
+            <x-ui.card>
+                <x-ui.card-header title="Split" />
+                <x-ui.card-content flush>
+                    <ul class="divide-y divide-border">
+                        @foreach ($transaction->splits as $split)
+                            <li class="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
+                                <span>{{ $split->category?->name ?: ($split->notes ?: 'Part') }}</span>
+                                <x-finance.money :amount="$split->amount" />
+                            </li>
+                        @endforeach
+                    </ul>
+                </x-ui.card-content>
+            </x-ui.card>
         @endif
 
-        <div class="card">
-            <div class="card-body small text-body-secondary">
-                <div>Recorded {{ $transaction->created_at->diffForHumans() }}</div>
+        <x-ui.card>
+            <x-ui.card-content class="text-xs text-muted-foreground">
+                <p>Recorded {{ $transaction->created_at->diffForHumans() }}</p>
                 @if ($transaction->updated_at->ne($transaction->created_at))
-                    <div>Last edited {{ $transaction->updated_at->diffForHumans() }}</div>
+                    <p class="mt-0.5">Last edited {{ $transaction->updated_at->diffForHumans() }}</p>
                 @endif
-            </div>
-        </div>
+            </x-ui.card-content>
+        </x-ui.card>
     </div>
 </div>
 
 @unless ($transaction->trashed())
-<div class="modal fade" id="voidModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form method="POST" action="{{ route('transactions.void', $transaction) }}" class="modal-content">
+    <x-ui.dialog id="void-transaction" title="Void this entry?"
+        description="It stops affecting balances but stays on record, so the history stays complete.">
+        <form method="POST" action="{{ route('transactions.void', $transaction) }}">
             @csrf
-            <div class="modal-header">
-                <h5 class="modal-title">Void this entry?</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="space-y-4 px-5 py-4">
+                @if ($counterpart)
+                    <x-ui.alert variant="warning">Both sides of this move will be voided together.</x-ui.alert>
+                @endif
+                <x-ui.input label="Why?" name="void_reason" required
+                    placeholder="Entered twice, wrong amount, …" />
             </div>
-            <div class="modal-body">
-                <p class="small">
-                    The entry will stop affecting balances but stays on record, so the history
-                    remains complete.
-                    @if ($counterpart)
-                        Both sides of this move will be voided together.
-                    @endif
-                </p>
-                <label for="void_reason" class="form-label">Why?</label>
-                <input type="text" name="void_reason" id="void_reason" class="form-control"
-                       placeholder="Entered twice, wrong amount, …" required>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-danger">Void entry</button>
+            <div class="flex justify-end gap-2 border-t border-border px-5 py-3">
+                <x-ui.button type="button" variant="ghost" x-on:click="$dispatch('close-dialog', 'void-transaction')">
+                    Cancel
+                </x-ui.button>
+                <x-ui.button type="submit" variant="destructive">Void entry</x-ui.button>
             </div>
         </form>
-    </div>
-</div>
+    </x-ui.dialog>
 @endunless
-
 @endsection

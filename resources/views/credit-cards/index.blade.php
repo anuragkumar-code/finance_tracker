@@ -5,104 +5,89 @@
 @section('subheading', 'What you owe, and what is due next')
 
 @section('actions')
-    <a href="{{ route('credit-cards.create') }}" class="btn btn-sm btn-primary text-nowrap">+ Add card</a>
+    <x-ui.button :href="route('reports.credit-cards')" variant="outline">Card report</x-ui.button>
+    <x-ui.button :href="route('credit-cards.create')" icon="plus">Add card</x-ui.button>
 @endsection
 
 @section('content')
 
 @if ($cards->isEmpty())
-    <div class="card">
-        <div class="card-body empty-state">
-            <h2 class="h5">No cards yet</h2>
-            <p class="mb-3">
-                Add a card with its limit, billing cycle and what you currently owe.
-                Purchases get recorded against the card as they happen; paying the bill
-                later is a separate step that will not be counted as spending twice.
-            </p>
-            <a href="{{ route('credit-cards.create') }}" class="btn btn-primary">Add your first card</a>
-        </div>
-    </div>
+    <x-ui.card>
+        <x-ui.empty-state icon="credit-card" title="No cards yet"
+            description="Add a card with its limit, billing cycle and what you currently owe. Purchases get recorded as they happen; paying the bill later is a separate step that is never counted as spending twice.">
+            <x-ui.button :href="route('credit-cards.create')" icon="plus">Add your first card</x-ui.button>
+        </x-ui.empty-state>
+    </x-ui.card>
 @else
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-6">
-            <div class="card h-100"><div class="card-body">
-                <div class="stat-label">Total owed across cards</div>
-                <div class="stat-value money money-neg">@inr($totalOwed)</div>
-            </div></div>
-        </div>
-        <div class="col-md-6">
-            <div class="card h-100"><div class="card-body">
-                <div class="stat-label">Due in the next 30 days</div>
-                @if ($upcomingDues->isEmpty())
-                    <div class="stat-value text-body-secondary">—</div>
-                    <div class="small text-body-secondary">No statements awaiting payment.</div>
-                @else
-                    <div class="stat-value money">
-                        @inr($upcomingDues->reduce(fn ($c, $s) => bcadd($c, $s->balanceRemaining(), 2), '0.00'))
-                    </div>
-                    <div class="small text-body-secondary">
-                        @foreach ($upcomingDues as $due)
-                            {{ $due->creditCard->card_name }} by {{ $due->due_date->format('d M') }}@if(! $loop->last), @endif
-                        @endforeach
-                    </div>
-                @endif
-            </div></div>
-        </div>
-    </div>
+<div class="grid gap-3 sm:grid-cols-2 lg:gap-4">
+    <x-ui.stat label="Total owed across cards" icon="credit-card" tone="debt"
+        :value="\App\Support\Money::inr($totalOwed)" />
 
-    <div class="row g-3">
-        @foreach ($cards as $card)
-            @php($util = $card->utilisation())
-            <div class="col-lg-6">
-                <div class="card h-100 {{ $card->is_active ? '' : 'opacity-50' }}">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div>
-                                <a href="{{ route('credit-cards.show', $card) }}"
-                                   class="h6 mb-0 d-block text-decoration-none">
-                                    {{ $card->card_name }}
-                                    @if ($card->account->owner)
-                                        <span class="badge text-bg-light border fw-normal">
-                                            {{ $card->account->owner->name }}
-                                        </span>
-                                    @endif
-                                </a>
-                                <div class="small text-body-secondary">
-                                    {{ $card->account->institution ?: 'Credit card' }} ·
-                                    bills on the {{ $card->statement_day }}, due on the {{ $card->payment_due_day }}
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                <div class="stat-label">Owed</div>
-                                <div class="h5 mb-0 money money-neg">@inr($card->outstanding())</div>
-                            </div>
-                        </div>
+    <x-ui.stat label="Due in the next 30 days" icon="calendar-clock"
+        :value="$upcomingDues->isEmpty()
+            ? '—'
+            : \App\Support\Money::inr($upcomingDues->reduce(fn ($c, $s) => bcadd($c, $s->balanceRemaining(), 2), '0.00'))"
+        :hint="$upcomingDues->isEmpty()
+            ? 'No statements awaiting payment'
+            : $upcomingDues->map(fn ($d) => $d->creditCard->card_name.' by '.$d->due_date->format('d M'))->implode(', ')" />
+</div>
 
-                        <div class="d-flex justify-content-between small mb-1">
-                            <span class="text-body-secondary">{{ $util }}% of limit used</span>
-                            <span class="money text-body-secondary">
-                                @inr($card->availableCredit()) available
-                            </span>
-                        </div>
-                        <div class="progress" style="height:6px;">
-                            <div class="progress-bar {{ $util >= 70 ? 'bg-danger' : ($util >= 40 ? 'bg-warning' : 'bg-success') }}"
-                                 style="width: {{ min($util, 100) }}%"></div>
-                        </div>
+<div class="mt-4 grid gap-4 lg:grid-cols-2">
+    @foreach ($cards as $card)
+        @php
+            $util = $card->utilisation();
+            $tone = $util >= 70 ? 'destructive' : ($util >= 40 ? 'warning' : 'success');
+        @endphp
 
-                        <div class="d-flex gap-2 mt-3">
-                            <a href="{{ route('credit-cards.payments.create', $card) }}"
-                               class="btn btn-sm btn-outline-primary">Pay bill</a>
-                            <a href="{{ route('credit-cards.statements.create', $card) }}"
-                               class="btn btn-sm btn-outline-secondary">Add statement</a>
+        <x-ui.card class="{{ $card->is_active ? '' : 'opacity-60' }}">
+            <x-ui.card-content class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-1.5">
                             <a href="{{ route('credit-cards.show', $card) }}"
-                               class="btn btn-sm btn-link ms-auto text-decoration-none">Details</a>
+                               class="text-base font-semibold hover:underline">{{ $card->card_name }}</a>
+                            @if ($card->account->owner)
+                                <x-ui.badge variant="outline">{{ $card->account->owner->name }}</x-ui.badge>
+                            @endif
+                            @if ($util >= 70)
+                                <x-ui.badge variant="destructive">High usage</x-ui.badge>
+                            @endif
                         </div>
+                        <p class="mt-0.5 text-xs text-muted-foreground">
+                            {{ $card->account->institution ?: 'Credit card' }} ·
+                            bills on the {{ $card->statement_day }}, due on the {{ $card->payment_due_day }}
+                        </p>
+                    </div>
+                    <div class="shrink-0 text-right">
+                        <p class="text-xs text-muted-foreground">Owed</p>
+                        <x-finance.money :amount="$card->outstanding()" tone="debt"
+                            class="text-lg font-semibold" />
                     </div>
                 </div>
-            </div>
-        @endforeach
-    </div>
-@endif
 
+                <div>
+                    <div class="mb-1.5 flex items-baseline justify-between text-xs">
+                        <span class="text-muted-foreground">{{ $util }}% of limit used</span>
+                        <span class="text-muted-foreground">
+                            <x-finance.money :amount="$card->availableCredit()" tone="muted" /> available
+                        </span>
+                    </div>
+                    <x-ui.progress :value="$util" :variant="$tone"
+                        :label="$card->card_name.' credit used'" />
+                </div>
+
+                <div class="flex items-center gap-2 border-t border-border pt-3">
+                    <x-ui.button :href="route('credit-cards.payments.create', $card)" size="sm">Pay bill</x-ui.button>
+                    <x-ui.button :href="route('credit-cards.statements.create', $card)" variant="outline" size="sm">
+                        Add statement
+                    </x-ui.button>
+                    <a href="{{ route('credit-cards.show', $card) }}"
+                       class="ml-auto text-sm text-muted-foreground hover:text-foreground">Details</a>
+                </div>
+            </x-ui.card-content>
+        </x-ui.card>
+    @endforeach
+</div>
+@endif
 @endsection

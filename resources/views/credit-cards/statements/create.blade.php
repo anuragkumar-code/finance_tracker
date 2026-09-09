@@ -2,122 +2,94 @@
 
 @section('title', 'Add statement')
 @section('heading', 'Add a statement')
-@section('subheading', $card->card_name . ' — group the purchases your bank has billed')
+@section('subheading', $card->card_name.' — group the purchases your bank has billed')
 
 @section('content')
-<div class="row g-3">
-    <div class="col-lg-7">
+<div class="grid gap-4 lg:grid-cols-12">
+    <div class="lg:col-span-7">
         <form method="POST" action="{{ route('credit-cards.statements.store', $card) }}">
             @csrf
-            <div class="card">
-                <div class="card-body">
-                    <div class="alert alert-info small">
+            <x-ui.card>
+                <x-ui.card-content class="space-y-4">
+                    <x-ui.alert variant="info">
                         A statement does not add to your spending — those purchases were already
-                        recorded when you made them. This just groups them and records what the
-                        bank says you owe.
+                        recorded when you made them. This groups them and records what the bank says
+                        you owe.
+                    </x-ui.alert>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.input label="Period from" name="period_start" type="date" id="period_start"
+                            :value="old('period_start', $periodStart->toDateString())" required />
+                        <x-ui.input label="Period to" name="period_end" type="date" id="period_end"
+                            :value="old('period_end', $periodEnd->toDateString())" required />
+                        <x-ui.input label="Statement date" name="statement_date" type="date"
+                            :value="old('statement_date', $periodEnd->toDateString())" required />
+                        <x-ui.input label="Payment due by" name="due_date" type="date"
+                            :value="old('due_date', $dueDate->toDateString())" required />
+
+                        <x-ui.input label="Statement amount" name="statement_amount" inputmode="decimal" prefix="₹"
+                            :value="old('statement_amount', $preview)" required
+                            hint="Pre-filled from your recorded purchases. Replace it with the figure on your real statement if they differ — the gap is worth knowing about." />
+
+                        <x-ui.input label="Minimum due" name="minimum_due" inputmode="decimal" prefix="₹"
+                            :value="old('minimum_due')" hint="Optional" />
                     </div>
 
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="period_start" class="form-label">Period from</label>
-                            <input type="date" name="period_start" id="period_start" class="form-control"
-                                   value="{{ old('period_start', $periodStart->toDateString()) }}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="period_end" class="form-label">Period to</label>
-                            <input type="date" name="period_end" id="period_end" class="form-control"
-                                   value="{{ old('period_end', $periodEnd->toDateString()) }}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="statement_date" class="form-label">Statement date</label>
-                            <input type="date" name="statement_date" id="statement_date" class="form-control"
-                                   value="{{ old('statement_date', $periodEnd->toDateString()) }}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="due_date" class="form-label">Payment due by</label>
-                            <input type="date" name="due_date" id="due_date" class="form-control"
-                                   value="{{ old('due_date', $dueDate->toDateString()) }}" required>
-                        </div>
+                    <x-ui.textarea label="Notes" name="notes" rows="2" hint="Optional">{{ old('notes') }}</x-ui.textarea>
+                </x-ui.card-content>
 
-                        <div class="col-md-6">
-                            <label for="statement_amount" class="form-label">Statement amount</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="text" inputmode="decimal" name="statement_amount" id="statement_amount"
-                                       class="form-control money"
-                                       value="{{ old('statement_amount', $preview) }}" required>
-                            </div>
-                            <div class="form-text">
-                                Pre-filled from your recorded purchases. Replace it with the figure on
-                                your real statement if they differ — the gap is worth knowing about.
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="minimum_due" class="form-label">Minimum due <span class="text-body-secondary">(optional)</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="text" inputmode="decimal" name="minimum_due" id="minimum_due"
-                                       class="form-control money" value="{{ old('minimum_due') }}">
-                            </div>
-                        </div>
-
-                        <div class="col-12">
-                            <label for="notes" class="form-label">Notes <span class="text-body-secondary">(optional)</span></label>
-                            <textarea name="notes" id="notes" class="form-control" rows="2">{{ old('notes') }}</textarea>
-                        </div>
-                    </div>
+                <div class="flex gap-2 border-t border-border px-5 py-3.5">
+                    <x-ui.button type="submit">Record statement</x-ui.button>
+                    <x-ui.button :href="route('credit-cards.show', $card)" variant="ghost">Cancel</x-ui.button>
                 </div>
-                <div class="card-footer bg-white d-flex gap-2">
-                    <button class="btn btn-primary">Record statement</button>
-                    <a href="{{ route('credit-cards.show', $card) }}" class="btn btn-outline-secondary">Cancel</a>
-                </div>
-            </div>
+            </x-ui.card>
         </form>
     </div>
 
-    <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>What will be grouped</span>
-                <span class="money fw-semibold">@inr($preview)</span>
-            </div>
-            <div class="card-body p-0">
+    <div class="lg:col-span-5">
+        <x-ui.card>
+            <x-ui.card-header title="What will be grouped">
+                <x-slot:action>
+                    <span class="text-sm font-semibold tabular">{{ \App\Support\Money::inr($preview) }}</span>
+                </x-slot:action>
+            </x-ui.card-header>
+            <x-ui.card-content flush>
                 @if ($transactions->isEmpty())
-                    <div class="empty-state">
-                        No unbilled purchases in this period.
-                    </div>
+                    <x-ui.empty-state icon="inbox" title="Nothing in this period"
+                        description="No unbilled purchases fall inside these dates." />
                 @else
-                    <table class="table table-sm mb-0">
-                        <tbody>
+                    <ul class="divide-y divide-border">
                         @foreach ($transactions as $t)
-                            <tr>
-                                <td class="text-nowrap text-body-secondary small">{{ $t->transaction_date->format('d M') }}</td>
-                                <td class="small">{{ $t->description ?: $t->merchant?->name ?: 'Purchase' }}</td>
-                                <td class="text-end money small">
-                                    {{ $t->balance_effect === \App\Enums\BalanceEffect::Decrease ? '−' : '' }}@inr($t->amount)
-                                </td>
-                            </tr>
+                            <li class="flex items-center gap-3 px-5 py-2">
+                                <span class="w-11 shrink-0 text-xs text-muted-foreground tabular">
+                                    {{ $t->transaction_date->format('d M') }}
+                                </span>
+                                <span class="min-w-0 flex-1 truncate text-sm">
+                                    {{ $t->description ?: $t->merchant?->name ?: 'Purchase' }}
+                                </span>
+                                <x-finance.money :amount="$t->amount" class="text-sm"
+                                    :tone="$t->balance_effect === \App\Enums\BalanceEffect::Decrease ? 'income' : null" />
+                            </li>
                         @endforeach
-                        </tbody>
-                    </table>
+                    </ul>
                 @endif
-            </div>
-            <div class="card-footer bg-white small text-body-secondary">
-                Adjust the dates above and reload to change what falls inside the period.
-            </div>
-        </div>
+            </x-ui.card-content>
+            <x-ui.card-footer>
+                Change the dates and the list reloads to match what will actually be grouped.
+            </x-ui.card-footer>
+        </x-ui.card>
     </div>
 </div>
 @endsection
 
 @push('scripts')
 <script>
-$(function () {
-    // Changing the period re-queries which purchases fall inside it, so the
-    // preview always matches what will actually be grouped.
-    $('#period_start, #period_end').on('change', function () {
-        const start = $('#period_start').val();
-        const end = $('#period_end').val();
+// Changing the period re-queries which purchases fall inside it, so the preview
+// always matches what will actually be grouped.
+['period_start', 'period_end'].forEach((id) => {
+    document.getElementById(id).addEventListener('change', () => {
+        const start = document.getElementById('period_start').value;
+        const end = document.getElementById('period_end').value;
         if (start && end) {
             window.location = '{{ route('credit-cards.statements.create', $card) }}'
                 + '?period_start=' + start + '&period_end=' + end;

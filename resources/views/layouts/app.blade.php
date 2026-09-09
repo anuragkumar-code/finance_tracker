@@ -1,274 +1,196 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en" class="h-full">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') · {{ config('app.name') }}</title>
-    <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
-    <style>
-        :root {
-            --ft-bg: #f6f7f9;
-            --ft-sidebar: #1c2434;
-            --ft-sidebar-muted: #93a0b5;
-            --ft-border: #e3e6ec;
-            --ft-positive: #157347;
-            --ft-negative: #b02a37;
-        }
 
-        body {
-            background: var(--ft-bg);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 0.9375rem;
-        }
+    {{-- Compiled by the Tailwind standalone CLI (see docs/SETUP.md); there is no
+         Vite build here, so the stylesheet is committed. --}}
+    <link rel="stylesheet" href="{{ asset('build/app.css') }}?v={{ filemtime(public_path('build/app.css')) }}">
 
-        /* Money must line up column-to-column for scanning. */
-        .money {
-            font-variant-numeric: tabular-nums;
-            font-feature-settings: "tnum";
-            white-space: nowrap;
-        }
-        .money-pos { color: var(--ft-positive); }
-        .money-neg { color: var(--ft-negative); }
-
-        .sidebar {
-            background: var(--ft-sidebar);
-            min-height: 100vh;
-            width: 232px;
-            flex-shrink: 0;
-        }
-        .sidebar .navbar-brand {
-            color: #fff;
-            font-weight: 600;
-            letter-spacing: -0.01em;
-        }
-        .sidebar .nav-link {
-            color: var(--ft-sidebar-muted);
-            border-radius: .375rem;
-            padding: .5rem .75rem;
-            margin-bottom: .125rem;
-            font-size: .9rem;
-        }
-        .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,.06); }
-        .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,.12); font-weight: 500; }
-        .sidebar .nav-section {
-            color: #5f6b80;
-            font-size: .7rem;
-            text-transform: uppercase;
-            letter-spacing: .06em;
-            font-weight: 600;
-            padding: .75rem .75rem .25rem;
-        }
-        .sidebar .nav-link.disabled {
-            color: #4a5468;
-            pointer-events: none;
-        }
-
-        .card {
-            border: 1px solid var(--ft-border);
-            border-radius: .5rem;
-            box-shadow: 0 1px 2px rgba(16,24,40,.04);
-        }
-        .card-header {
-            background: #fff;
-            border-bottom: 1px solid var(--ft-border);
-            font-weight: 600;
-            font-size: .9rem;
-        }
-
-        .stat-label {
-            font-size: .75rem;
-            text-transform: uppercase;
-            letter-spacing: .05em;
-            color: #6b7385;
-            font-weight: 600;
-        }
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-        }
-
-        .table > :not(caption) > * > * { padding: .6rem .75rem; }
-        .table thead th {
-            font-size: .72rem;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            color: #6b7385;
-            font-weight: 600;
-            border-bottom-width: 1px;
-        }
-
-        /* Quick entry: big amount field, chip-style pickers. */
-        .amount-input {
-            font-size: 2.25rem;
-            font-weight: 600;
-            border: none;
-            border-bottom: 2px solid var(--ft-border);
-            border-radius: 0;
-            padding: .25rem .5rem;
-            font-variant-numeric: tabular-nums;
-        }
-        .amount-input:focus {
-            box-shadow: none;
-            border-bottom-color: #0d6efd;
-        }
-        .chip-group { display: flex; flex-wrap: wrap; gap: .375rem; }
-        .chip input { position: absolute; opacity: 0; width: 0; height: 0; }
-        .chip span {
-            display: inline-block;
-            padding: .35rem .75rem;
-            border: 1px solid var(--ft-border);
-            border-radius: 999px;
-            background: #fff;
-            cursor: pointer;
-            font-size: .875rem;
-            user-select: none;
-            transition: all .12s ease;
-        }
-        .chip input:checked + span {
-            background: #0d6efd;
-            border-color: #0d6efd;
-            color: #fff;
-        }
-        .chip input:focus-visible + span { outline: 2px solid #0d6efd; outline-offset: 2px; }
-
-        .empty-state { text-align: center; padding: 2.5rem 1rem; color: #6b7385; }
-
-        @media (max-width: 991.98px) {
-            .sidebar { min-height: auto; width: 100%; }
-        }
-    </style>
+    <script defer src="{{ asset('vendor/alpine/focus.min.js') }}"></script>
+    <script defer src="{{ asset('vendor/alpine/alpine.min.js') }}"></script>
     @stack('head')
 </head>
-<body>
-<div class="d-lg-flex">
+<body class="h-full bg-background text-foreground antialiased">
 
-    <aside class="sidebar d-flex flex-column p-3">
-        <a class="navbar-brand d-flex align-items-center mb-3 px-2" href="{{ route('dashboard') }}">
-            <span>{{ config('app.name') }}</span>
-        </a>
+@php
+    $nav = [
+        'Main' => [
+            ['route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'layout-dashboard', 'match' => 'dashboard'],
+            ['route' => 'quick-entry', 'label' => 'Quick Entry', 'icon' => 'zap', 'match' => 'quick-entry'],
+            ['route' => 'transactions.index', 'label' => 'Transactions', 'icon' => 'arrow-left-right', 'match' => 'transactions.*'],
+            ['route' => 'accounts.index', 'label' => 'Accounts', 'icon' => 'wallet', 'match' => 'accounts.*'],
+            ['route' => 'credit-cards.index', 'label' => 'Credit Cards', 'icon' => 'credit-card', 'match' => 'credit-cards.*'],
+            ['route' => 'loans.index', 'label' => 'Loans', 'icon' => 'landmark', 'match' => 'loans.*'],
+            ['route' => 'recurring.index', 'label' => 'Recurring', 'icon' => 'repeat', 'match' => 'recurring.*'],
+            ['route' => 'assets.index', 'label' => 'Assets', 'icon' => 'building-2', 'match' => 'assets.*'],
+            ['route' => 'upcoming.index', 'label' => 'Upcoming', 'icon' => 'calendar-clock', 'match' => 'upcoming.*'],
+        ],
+        'Analytics' => [
+            ['route' => 'reports.index', 'label' => 'Reports', 'icon' => 'chart-line', 'match' => 'reports.*'],
+            ['route' => 'budgets.index', 'label' => 'Budgets', 'icon' => 'chart-pie', 'match' => 'budgets.*'],
+            ['route' => 'reconciliations.index', 'label' => 'Reconcile', 'icon' => 'scale', 'match' => 'reconciliations.*'],
+        ],
+        'Settings' => [
+            ['route' => 'settings.categories.index', 'label' => 'Categories', 'icon' => 'tags', 'match' => 'settings.categories.*'],
+            ['route' => 'settings.people.index', 'label' => 'People', 'icon' => 'users', 'match' => 'settings.people.*'],
+            ['route' => 'settings.merchants.index', 'label' => 'Merchants', 'icon' => 'store', 'match' => 'settings.merchants.*'],
+        ],
+    ];
+@endphp
 
-        <button class="btn btn-sm btn-outline-light d-lg-none mb-3" type="button"
-                data-bs-toggle="collapse" data-bs-target="#sidebarNav">
-            Menu
-        </button>
+<div x-data="{ sidebar: false }" class="min-h-full">
 
-        <nav class="collapse d-lg-block flex-grow-1" id="sidebarNav">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"
-                       href="{{ route('dashboard') }}">Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('quick-entry') ? 'active' : '' }}"
-                       href="{{ route('quick-entry') }}">Quick Entry</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('transactions.*') ? 'active' : '' }}"
-                       href="{{ route('transactions.index') }}">Transactions</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('accounts.*') ? 'active' : '' }}"
-                       href="{{ route('accounts.index') }}">Accounts</a>
-                </li>
+    {{-- Mobile scrim. On small screens the sidebar becomes a drawer rather than
+         collapsing inline, which kept pushing content down awkwardly. --}}
+    <div x-show="sidebar" x-cloak x-transition.opacity
+         x-on:click="sidebar = false"
+         class="fixed inset-0 z-30 bg-[oklch(0.21_0.02_258_/_0.5)] lg:hidden"
+         aria-hidden="true"></div>
 
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('credit-cards.*') ? 'active' : '' }}"
-                       href="{{ route('credit-cards.index') }}">Credit Cards</a>
-                </li>
+    <aside x-cloak
+           :class="sidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+           class="fixed inset-y-0 left-0 z-40 flex w-[15.5rem] flex-col border-r
+                  bg-[var(--sidebar)] transition-transform duration-200 lg:translate-x-0"
+           style="border-color: var(--sidebar-border)">
 
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('loans.*') ? 'active' : '' }}"
-                       href="{{ route('loans.index') }}">Loans</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('recurring.*') ? 'active' : '' }}"
-                       href="{{ route('recurring.index') }}">Recurring</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('assets.*') ? 'active' : '' }}"
-                       href="{{ route('assets.index') }}">Assets</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('upcoming.*') ? 'active' : '' }}"
-                       href="{{ route('upcoming.index') }}">Upcoming</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}"
-                       href="{{ route('reports.index') }}">Reports</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}"
-                       href="{{ route('budgets.index') }}">Budgets</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('reconciliations.*') ? 'active' : '' }}"
-                       href="{{ route('reconciliations.index') }}">Reconcile</a>
-                </li>
-
-                <li class="nav-section">Settings</li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('settings.categories.*') ? 'active' : '' }}"
-                       href="{{ route('settings.categories.index') }}">Categories</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('settings.people.*') ? 'active' : '' }}"
-                       href="{{ route('settings.people.index') }}">People</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('settings.merchants.*') ? 'active' : '' }}"
-                       href="{{ route('settings.merchants.index') }}">Merchants</a>
-                </li>
-            </ul>
-        </nav>
-    </aside>
-
-    <main class="flex-grow-1 p-3 p-lg-4" style="min-width:0;">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <div>
-                <h1 class="h4 mb-0">@yield('heading', 'Dashboard')</h1>
-                @hasSection('subheading')
-                    <div class="text-body-secondary small">@yield('subheading')</div>
-                @endif
-            </div>
-            <div>@yield('actions')</div>
+        <div class="flex h-14 shrink-0 items-center gap-2 px-4"
+             style="border-bottom: 1px solid var(--sidebar-border)">
+            <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-2">
+                <span class="flex size-7 shrink-0 items-center justify-center rounded-md bg-[var(--sidebar-accent)]">
+                    <x-ui.icon name="piggy-bank" class="size-4" style="color: var(--sidebar-foreground)" />
+                </span>
+                <span class="truncate text-sm font-semibold" style="color: oklch(0.97 0.005 250)">
+                    {{ config('app.name') }}
+                </span>
+            </a>
+            <button type="button" x-on:click="sidebar = false"
+                    class="ml-auto rounded-md p-1 lg:hidden" style="color: var(--sidebar-muted)">
+                <x-ui.icon name="x" class="size-4" />
+                <span class="sr-only">Close menu</span>
+            </button>
         </div>
 
-        @if (session('status'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ session('status') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+        <nav class="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Main">
+            @foreach ($nav as $section => $items)
+                <div>
+                    <p class="px-2.5 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-wider"
+                       style="color: var(--sidebar-muted)">{{ $section }}</p>
+                    <ul class="space-y-0.5">
+                        @foreach ($items as $item)
+                            @php($active = request()->routeIs($item['match']))
+                            <li>
+                                <a href="{{ route($item['route']) }}"
+                                   @if ($active) aria-current="page" @endif
+                                   class="group flex items-center gap-2.5 rounded-md px-2.5 py-[0.4375rem] text-sm transition-colors"
+                                   style="{{ $active
+                                       ? 'background-color: var(--sidebar-accent); color: oklch(0.98 0.003 250); font-weight: 500;'
+                                       : 'color: var(--sidebar-foreground);' }}"
+                                   @if (! $active)
+                                       onmouseover="this.style.backgroundColor='var(--sidebar-accent)';this.style.color='oklch(0.98 0.003 250)'"
+                                       onmouseout="this.style.backgroundColor='';this.style.color='var(--sidebar-foreground)'"
+                                   @endif>
+                                    <x-ui.icon :name="$item['icon']" class="size-4 shrink-0 opacity-80" />
+                                    <span class="truncate">{{ $item['label'] }}</span>
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endforeach
+        </nav>
 
-        @if (session('warning'))
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                {{ session('warning') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+        <div class="shrink-0 px-4 py-3 text-[0.6875rem]"
+             style="border-top: 1px solid var(--sidebar-border); color: var(--sidebar-muted)">
+            <span class="inline-flex items-center gap-1.5">
+                <x-ui.icon name="lock" class="size-3" />
+                Private · runs on this machine
+            </span>
+        </div>
+    </aside>
 
-        @if ($errors->any())
-            <div class="alert alert-danger">
-                <div class="fw-semibold mb-1">Please check the following:</div>
-                <ul class="mb-0 ps-3">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
+    <div class="lg:pl-[15.5rem]">
+        {{-- Mobile top bar. Desktop gets its page title from the header block
+             instead, so the chrome stays out of the way. --}}
+        <header class="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border
+                       bg-background/85 px-4 backdrop-blur lg:hidden">
+            <button type="button" x-on:click="sidebar = true"
+                    class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <x-ui.icon name="menu" class="size-5" />
+                <span class="sr-only">Open menu</span>
+            </button>
+            <span class="truncate text-sm font-semibold">@yield('heading', 'Dashboard')</span>
+            <a href="{{ route('quick-entry') }}"
+               class="ml-auto inline-flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                <x-ui.icon name="plus" class="size-4" />
+                <span class="sr-only">Quick entry</span>
+            </a>
+        </header>
 
-        @yield('content')
-    </main>
+        <main class="mx-auto w-full max-w-[85rem] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+            <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                    <h1 class="text-2xl font-semibold tracking-tight text-foreground">
+                        @yield('heading', 'Dashboard')
+                    </h1>
+                    @hasSection('subheading')
+                        <p class="mt-1 text-sm text-muted-foreground">@yield('subheading')</p>
+                    @endif
+                </div>
+                @hasSection('actions')
+                    <div class="flex shrink-0 flex-wrap items-center gap-2">@yield('actions')</div>
+                @endif
+            </div>
+
+            @if ($errors->any())
+                {{-- Field-level errors render against their inputs; this is the
+                     summary for anything that could not be attached to one. --}}
+                <div class="mb-5">
+                    <x-ui.alert variant="destructive" title="Please check the following">
+                        <ul class="mt-1 list-disc space-y-0.5 pl-4">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </x-ui.alert>
+                </div>
+            @endif
+
+            @yield('content')
+        </main>
+    </div>
 </div>
 
-<script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
-<script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+<x-ui.toast />
+
 <script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
 <script>
-    $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
+    // Chart defaults live here so every chart in the app shares one visual
+    // language rather than each page restating fonts and grid colours.
+    if (window.Chart) {
+        Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+        Chart.defaults.font.size = 11;
+        Chart.defaults.color = 'oklch(0.554 0.02 257)';
+        Chart.defaults.plugins.legend.display = false;
+        Chart.defaults.plugins.tooltip.backgroundColor = 'oklch(0.21 0.02 258)';
+        Chart.defaults.plugins.tooltip.padding = 10;
+        Chart.defaults.plugins.tooltip.cornerRadius = 6;
+        Chart.defaults.plugins.tooltip.displayColors = false;
+        Chart.defaults.plugins.tooltip.titleFont = { weight: '600', size: 11 };
+        Chart.defaults.maintainAspectRatio = false;
+
+        window.ftChartPalette = [
+            'oklch(0.55 0.13 253)', 'oklch(0.68 0.15 70)', 'oklch(0.58 0.16 27)',
+            'oklch(0.62 0.10 190)', 'oklch(0.58 0.12 152)', 'oklch(0.62 0.13 310)',
+            'oklch(0.66 0.10 40)', 'oklch(0.52 0.08 258)', 'oklch(0.70 0.09 120)',
+            'oklch(0.60 0.06 250)',
+        ];
+
+        window.ftMoney = (v) => '₹' + Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    }
 </script>
 @stack('scripts')
 </body>

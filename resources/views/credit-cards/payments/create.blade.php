@@ -1,110 +1,86 @@
 @extends('layouts.app')
 
 @section('title', 'Pay card bill')
-@section('heading', 'Pay ' . $card->card_name)
+@section('heading', 'Pay '.$card->card_name)
 @section('subheading', 'Clears what you owe — this is not counted as spending')
 
 @section('content')
-<div class="row g-3">
-    <div class="col-lg-7">
+<div class="grid gap-4 lg:grid-cols-12">
+    <div class="lg:col-span-7">
         <form method="POST" action="{{ route('credit-cards.payments.store', $card) }}">
             @csrf
-            <div class="card">
-                <div class="card-body">
-                    <div class="alert alert-info small">
+            <x-ui.card>
+                <x-ui.card-content class="space-y-4">
+                    <x-ui.alert variant="info">
                         Paying this bill moves money out of your bank account and reduces what you
-                        owe on the card. The purchases were already counted as spending when you
-                        made them, so this payment will <strong>not</strong> be counted again.
+                        owe on the card. The purchases were already counted as spending when you made
+                        them, so this payment will <strong class="text-foreground">not</strong> be
+                        counted again.
+                    </x-ui.alert>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.input label="Amount" name="amount" inputmode="decimal" prefix="₹"
+                            :value="old('amount', $suggestedAmount)" required autofocus
+                            :hint="'Currently owed on this card: '.\App\Support\Money::inr($card->outstanding())" />
+
+                        <x-ui.input label="Paid on" name="payment_date" type="date"
+                            :value="old('payment_date', now()->toDateString())" required />
+
+                        <x-ui.select label="Paid from" name="source_account_id" required>
+                            <option value="">Choose…</option>
+                            @foreach ($sourceAccounts as $account)
+                                <option value="{{ $account->id }}" @selected(old('source_account_id') == $account->id)>
+                                    {{ $account->name }} ({{ \App\Support\Money::inr($account->cached_balance) }})
+                                </option>
+                            @endforeach
+                        </x-ui.select>
+
+                        <x-ui.select label="Against statement" name="statement_id"
+                            hint="Links the payment so the bill is marked paid. Optional.">
+                            <option value="">Not tied to a statement</option>
+                            @foreach ($statements as $s)
+                                <option value="{{ $s->id }}" @selected(old('statement_id', $statement?->id) == $s->id)>
+                                    {{ $s->period_end->format('d M Y') }} — {{ \App\Support\Money::inr($s->balanceRemaining()) }} left
+                                </option>
+                            @endforeach
+                        </x-ui.select>
                     </div>
 
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="amount" class="form-label">Amount</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="text" inputmode="decimal" name="amount" id="amount"
-                                       class="form-control money @error('amount') is-invalid @enderror"
-                                       value="{{ old('amount', $suggestedAmount) }}" required autofocus>
-                                @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="form-text">
-                                Currently owed on this card: <span class="money">@inr($card->outstanding())</span>
-                            </div>
-                        </div>
+                    <x-ui.textarea label="Notes" name="notes" rows="2" hint="Optional">{{ old('notes') }}</x-ui.textarea>
+                </x-ui.card-content>
 
-                        <div class="col-md-6">
-                            <label for="payment_date" class="form-label">Paid on</label>
-                            <input type="date" name="payment_date" id="payment_date" class="form-control"
-                                   value="{{ old('payment_date', now()->toDateString()) }}" required>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="source_account_id" class="form-label">Paid from</label>
-                            <select name="source_account_id" id="source_account_id"
-                                    class="form-select @error('source_account_id') is-invalid @enderror" required>
-                                <option value="">Choose…</option>
-                                @foreach ($sourceAccounts as $account)
-                                    <option value="{{ $account->id }}" @selected(old('source_account_id') == $account->id)>
-                                        {{ $account->name }} (@inr($account->cached_balance))
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('source_account_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="statement_id" class="form-label">
-                                Against statement <span class="text-body-secondary">(optional)</span>
-                            </label>
-                            <select name="statement_id" id="statement_id" class="form-select">
-                                <option value="">Not tied to a statement</option>
-                                @foreach ($statements as $s)
-                                    <option value="{{ $s->id }}"
-                                            @selected(old('statement_id', $statement?->id) == $s->id)>
-                                        {{ $s->period_end->format('d M Y') }} —
-                                        {{ \App\Support\Money::inr($s->balanceRemaining()) }} left
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="form-text">Links the payment so the bill is marked paid.</div>
-                        </div>
-
-                        <div class="col-12">
-                            <label for="notes" class="form-label">Notes <span class="text-body-secondary">(optional)</span></label>
-                            <textarea name="notes" id="notes" class="form-control" rows="2">{{ old('notes') }}</textarea>
-                        </div>
-                    </div>
+                <div class="flex gap-2 border-t border-border px-5 py-3.5">
+                    <x-ui.button type="submit">Record payment</x-ui.button>
+                    <x-ui.button :href="route('credit-cards.show', $card)" variant="ghost">Cancel</x-ui.button>
                 </div>
-                <div class="card-footer bg-white d-flex gap-2">
-                    <button class="btn btn-primary">Record payment</button>
-                    <a href="{{ route('credit-cards.show', $card) }}" class="btn btn-outline-secondary">Cancel</a>
-                </div>
-            </div>
+            </x-ui.card>
         </form>
     </div>
 
-    <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header">What this will do</div>
-            <div class="card-body">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr>
-                            <td>Your bank balance</td>
-                            <td class="text-end money money-neg">goes down</td>
-                        </tr>
-                        <tr>
-                            <td>Amount owed on {{ $card->card_name }}</td>
-                            <td class="text-end money money-pos">goes down</td>
-                        </tr>
-                        <tr class="border-top">
-                            <td class="fw-semibold">Your spending total</td>
-                            <td class="text-end fw-semibold">unchanged</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="lg:col-span-5">
+        <x-ui.card>
+            <x-ui.card-header title="What this will do" />
+            <x-ui.card-content flush>
+                <ul class="divide-y divide-border">
+                    <li class="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
+                        <span>Your bank balance</span>
+                        <span class="inline-flex items-center gap-1 text-expense">
+                            <x-ui.icon name="arrow-down-right" class="size-3.5" /> goes down
+                        </span>
+                    </li>
+                    <li class="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
+                        <span>Owed on {{ $card->card_name }}</span>
+                        <span class="inline-flex items-center gap-1 text-income">
+                            <x-ui.icon name="arrow-down-right" class="size-3.5" /> goes down
+                        </span>
+                    </li>
+                    <li class="flex items-center justify-between gap-3 px-5 py-2.5 text-sm font-medium">
+                        <span>Your spending total</span>
+                        <span class="text-muted-foreground">unchanged</span>
+                    </li>
+                </ul>
+            </x-ui.card-content>
+        </x-ui.card>
     </div>
 </div>
 @endsection

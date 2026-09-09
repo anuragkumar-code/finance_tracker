@@ -2,376 +2,341 @@
 
 @section('title', 'Quick Entry')
 @section('heading', 'What did you spend?')
-@section('subheading', 'Amount and where it came from is all that is needed. Everything else is optional.')
+@section('subheading', 'The amount and the account are all that is needed — everything else is optional.')
 
 @section('content')
-@php
-    $allAccounts = $bankAccounts->concat($cardAccounts);
-@endphp
+@php($allAccounts = $bankAccounts->concat($cardAccounts))
 
 @if ($allAccounts->isEmpty())
-    <div class="card">
-        <div class="card-body empty-state">
-            <p class="mb-3">You need at least one account before you can record spending.</p>
-            <a href="{{ route('accounts.create') }}" class="btn btn-primary">Add your first account</a>
-        </div>
-    </div>
+    <x-ui.card>
+        <x-ui.empty-state icon="wallet" title="No accounts yet"
+            description="You need at least one account before you can record spending.">
+            <x-ui.button :href="route('accounts.create')" icon="plus">Add your first account</x-ui.button>
+        </x-ui.empty-state>
+    </x-ui.card>
 @else
-<form method="POST" action="{{ route('quick-entry.store') }}" id="quickEntryForm">
+<form method="POST" action="{{ route('quick-entry.store') }}"
+      x-data="{ saving: false }" x-on:submit="saving = true"
+      class="grid gap-4 lg:grid-cols-12">
     @csrf
-    <div class="row g-3">
-        <div class="col-lg-8">
 
-            {{-- Step 1: the amount. Always the first thing anyone knows. --}}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <span class="display-6 text-body-secondary me-2">₹</span>
-                        <input type="text" inputmode="decimal" name="amount" id="amount"
-                               class="form-control amount-input @error('amount') is-invalid @enderror"
-                               placeholder="0" value="{{ old('amount') }}" autocomplete="off" autofocus>
+    <div class="space-y-4 lg:col-span-8">
+
+        {{-- The amount dominates: it is the one thing the user always knows,
+             and it should be typeable the instant the page loads. --}}
+        <x-ui.card>
+            <x-ui.card-content class="!py-6">
+                <label for="amount" class="text-xs font-medium text-muted-foreground">Amount</label>
+                <div class="mt-1 flex items-center gap-2">
+                    <span class="text-3xl font-medium text-muted-foreground">₹</span>
+                    <input type="text" inputmode="decimal" name="amount" id="amount"
+                           value="{{ old('amount') }}" placeholder="0" autocomplete="off" autofocus
+                           class="w-full border-0 bg-transparent p-0 text-4xl font-semibold tabular
+                                  tracking-tight text-foreground placeholder:text-muted-foreground/40
+                                  focus:outline-none focus:ring-0">
+                </div>
+                @error('amount')
+                    <p class="mt-2 text-sm text-destructive">{{ $message }}</p>
+                @enderror
+            </x-ui.card-content>
+        </x-ui.card>
+
+        {{-- The screen this page lives or dies by. With seventeen accounts a
+             flat list is unusable, so they are grouped, the recently used are
+             surfaced first, and a filter box handles the rest. --}}
+        <x-ui.card x-data="{ filter: '' }">
+            <x-ui.card-header title="Where did the money come from?">
+                <x-slot:action>
+                    <div class="relative">
+                        <x-ui.icon name="search"
+                            class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <input type="search" x-model="filter" placeholder="Filter"
+                               aria-label="Filter accounts"
+                               class="h-8 w-36 rounded-md border border-input bg-card pl-8 pr-2 text-sm
+                                      focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25">
                     </div>
-                    @error('amount')
-                        <div class="text-danger small mt-1">{{ $message }}</div>
-                    @enderror
-                </div>
-            </div>
+                </x-slot:action>
+            </x-ui.card-header>
 
-            {{-- Step 2: which account. The screen this page lives or dies by —
-                 with seventeen accounts, a flat list is unusable, so they are
-                 split by kind with the recently used ones surfaced first. --}}
-            <div class="card mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Where did the money come from?</span>
-                    <input type="search" id="accountFilter" class="form-control form-control-sm w-auto"
-                           placeholder="Filter accounts…" autocomplete="off" style="max-width:12rem;">
-                </div>
-                <div class="card-body">
-                    @error('account_id')
-                        <div class="alert alert-danger py-2 small">{{ $message }}</div>
-                    @enderror
+            <x-ui.card-content class="space-y-4">
+                @error('account_id')
+                    <p class="text-sm text-destructive">{{ $message }}</p>
+                @enderror
 
-                    @if ($recentAccounts->isNotEmpty())
-                        <div class="account-group mb-3">
-                            <div class="stat-label mb-2">Recently used</div>
-                            <div class="chip-group">
-                                @foreach ($recentAccounts as $account)
-                                    @include('partials._account-chip', ['account' => $account])
-                                @endforeach
-                            </div>
+                @foreach ([
+                    ['label' => 'Recently used', 'items' => $recentAccounts],
+                    ['label' => 'Bank & cash', 'items' => $bankAccounts],
+                    ['label' => 'Credit cards', 'items' => $cardAccounts],
+                ] as $group)
+                    @continue($group['items']->isEmpty())
+                    <div x-show="$el.querySelectorAll('.chip:not([hidden])').length > 0">
+                        <p class="mb-2 text-xs font-medium text-muted-foreground">{{ $group['label'] }}</p>
+                        <div class="flex flex-wrap gap-1.5">
+                            @foreach ($group['items'] as $account)
+                                @include('partials._account-chip', [
+                                    'account' => $account,
+                                    'isCard' => $account->isLiability(),
+                                ])
+                            @endforeach
                         </div>
-                    @endif
-
-                    @if ($bankAccounts->isNotEmpty())
-                        <div class="account-group mb-3">
-                            <div class="stat-label mb-2">Bank &amp; cash</div>
-                            <div class="chip-group">
-                                @foreach ($bankAccounts as $account)
-                                    @include('partials._account-chip', ['account' => $account])
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
-                    @if ($cardAccounts->isNotEmpty())
-                        <div class="account-group">
-                            <div class="stat-label mb-2">Credit cards</div>
-                            <div class="chip-group">
-                                @foreach ($cardAccounts as $account)
-                                    @include('partials._account-chip', ['account' => $account, 'isCard' => true])
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
-                    <div class="text-body-secondary small mt-3 d-none" id="noAccountMatch">
-                        No account matches that.
                     </div>
-                </div>
-            </div>
+                @endforeach
+            </x-ui.card-content>
+        </x-ui.card>
 
-            {{-- Step 3: what it was. --}}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="merchantName" class="stat-label d-block mb-2">Where did you buy it?</label>
-                        <input type="text" name="merchant_name" id="merchantName"
-                               class="form-control" list="merchantList" autocomplete="off"
+        <x-ui.card>
+            <x-ui.card-content class="space-y-5">
+                <div>
+                    <label for="merchantName" class="block text-sm font-medium">Where did you buy it?</label>
+                    <div class="relative mt-1.5">
+                        <x-ui.icon name="store"
+                            class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <input type="text" name="merchant_name" id="merchantName" list="merchantList"
+                               value="{{ old('merchant_name') }}" autocomplete="off"
                                placeholder="Blinkit, Amazon, the shop down the road…"
-                               value="{{ old('merchant_name') }}">
-                        <input type="hidden" name="merchant_id" id="merchantId" value="{{ old('merchant_id') }}">
-                        <datalist id="merchantList">
-                            @foreach ($merchants as $merchant)
-                                <option value="{{ $merchant->name }}"></option>
-                            @endforeach
-                        </datalist>
-                        <div class="form-text" id="merchantHint">
-                            Well-known names like Blinkit or Amazon are sorted into quick commerce
-                            and online shopping automatically, so those reports fill themselves in.
-                        </div>
+                               class="h-10 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm
+                                      placeholder:text-muted-foreground focus:border-ring focus:outline-none
+                                      focus:ring-2 focus:ring-ring/25">
                     </div>
-
-                    <div>
-                        <label class="stat-label d-block mb-2">What kind of spend?</label>
-                        <div class="chip-group" id="categoryChips">
-                            @foreach ($categories as $category)
-                                <label class="chip">
-                                    <input type="radio" name="category_id" value="{{ $category->id }}"
-                                           @checked(old('category_id') == $category->id)>
-                                    <span>{{ $category->name }}</span>
-                                </label>
-                            @endforeach
-                        </div>
-
-                        <div class="mt-2 d-none" id="subcategoryWrap">
-                            <label class="stat-label d-block mb-2">More specifically</label>
-                            <div class="chip-group" id="subcategoryChips"></div>
-                        </div>
-                    </div>
+                    <input type="hidden" name="merchant_id" id="merchantId" value="{{ old('merchant_id') }}">
+                    <datalist id="merchantList">
+                        @foreach ($merchants as $merchant)
+                            <option value="{{ $merchant->name }}"></option>
+                        @endforeach
+                    </datalist>
+                    <p class="mt-1.5 text-xs text-muted-foreground" id="merchantHint">
+                        Names like Blinkit or Amazon sort themselves into quick commerce and
+                        online shopping, so those reports fill in on their own.
+                    </p>
                 </div>
-            </div>
 
-            {{-- Step 4: who. Optional, but one tap each. --}}
-            <div class="card">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-sm-6">
-                            <label class="stat-label d-block mb-2">
-                                Who paid <span class="text-body-secondary fw-normal">(optional)</span>
+                <div>
+                    <p class="mb-2 text-sm font-medium">What kind of spend?</p>
+                    <div class="flex flex-wrap gap-1.5" id="categoryChips">
+                        @foreach ($categories as $category)
+                            <label class="chip">
+                                <input type="radio" name="category_id" value="{{ $category->id }}"
+                                       @checked(old('category_id') == $category->id)>
+                                <span>{{ $category->name }}</span>
                             </label>
-                            <div class="chip-group">
-                                @foreach ($payers as $payer)
-                                    <label class="chip">
-                                        <input type="radio" name="payer_id" value="{{ $payer->id }}"
-                                               @checked(old('payer_id') == $payer->id)>
-                                        <span>{{ $payer->name }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <label class="stat-label d-block mb-2">
-                                Who it was for <span class="text-body-secondary fw-normal">(optional)</span>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-3 hidden" id="subcategoryWrap">
+                        <p class="mb-2 text-xs font-medium text-muted-foreground">More specifically</p>
+                        <div class="flex flex-wrap gap-1.5" id="subcategoryChips"></div>
+                    </div>
+                </div>
+            </x-ui.card-content>
+        </x-ui.card>
+
+        <x-ui.card>
+            <x-ui.card-content class="grid gap-5 sm:grid-cols-2">
+                <div>
+                    <p class="mb-2 text-sm font-medium">
+                        Who paid <span class="font-normal text-muted-foreground">· optional</span>
+                    </p>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach ($payers as $payer)
+                            <label class="chip">
+                                <input type="radio" name="payer_id" value="{{ $payer->id }}"
+                                       @checked(old('payer_id') == $payer->id)>
+                                <span>{{ $payer->name }}</span>
                             </label>
-                            <div class="chip-group">
-                                @foreach ($beneficiaries as $person)
-                                    <label class="chip">
-                                        <input type="radio" name="beneficiary_id" value="{{ $person->id }}"
-                                               @checked(old('beneficiary_id') == $person->id)>
-                                        <span>{{ $person->name }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="transaction_date" class="stat-label d-block mb-2">When</label>
-                        <input type="date" name="transaction_date" id="transaction_date" class="form-control"
-                               value="{{ old('transaction_date', now()->toDateString()) }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="description" class="stat-label d-block mb-2">
-                            Note <span class="text-body-secondary fw-normal">(optional)</span>
-                        </label>
-                        <input type="text" name="description" id="description" class="form-control"
-                               placeholder="What was it for?" value="{{ old('description') }}">
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100 btn-lg">Save</button>
-                </div>
-            </div>
-
-            {{-- Pushed below the fold: useful for reports, but never in the way
-                 of getting an entry recorded. --}}
-            <div class="card mb-3">
-                <div class="card-header">
-                    <button class="btn btn-link p-0 text-decoration-none" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#extraDetail">
-                        Add detail for reports
-                    </button>
-                </div>
-                <div class="collapse {{ old('planned_status') || old('purpose') ? 'show' : '' }}" id="extraDetail">
-                    <div class="card-body pt-0">
-                        <div class="mb-3">
-                            <label class="stat-label d-block mb-2">Did you expect this?</label>
-                            <div class="chip-group">
-                                @foreach ($plannedStatuses as $status)
-                                    <label class="chip">
-                                        <input type="radio" name="planned_status" value="{{ $status->value }}"
-                                               @checked(old('planned_status') === $status->value)>
-                                        <span>{{ $status->label() }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="stat-label d-block mb-2">Could you have skipped it?</label>
-                            <div class="chip-group">
-                                @foreach ($purposes as $purpose)
-                                    <label class="chip">
-                                        <input type="radio" name="purpose" value="{{ $purpose->value }}"
-                                               @checked(old('purpose') === $purpose->value)>
-                                        <span>{{ $purpose->label() }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                            <div class="form-text">
-                                Feeds the "needs vs wants" split in reports. Skip it if you are not sure.
-                            </div>
-                        </div>
+                <div>
+                    <p class="mb-2 text-sm font-medium">
+                        Who it was for <span class="font-normal text-muted-foreground">· optional</span>
+                    </p>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach ($beneficiaries as $person)
+                            <label class="chip">
+                                <input type="radio" name="beneficiary_id" value="{{ $person->id }}"
+                                       @checked(old('beneficiary_id') == $person->id)>
+                                <span>{{ $person->name }}</span>
+                            </label>
+                        @endforeach
                     </div>
                 </div>
-            </div>
+            </x-ui.card-content>
+        </x-ui.card>
+    </div>
 
-            <div class="card">
-                <div class="card-body small text-body-secondary">
-                    <div class="fw-semibold text-body mb-1">Paying by credit card?</div>
-                    Pick the card above. The spend counts today and the card's balance goes up —
-                    paying that bill later is a separate step and is never counted as spending twice.
+    <div class="space-y-4 lg:col-span-4">
+        <x-ui.card>
+            <x-ui.card-content class="space-y-4">
+                <x-ui.input label="When" name="transaction_date" type="date"
+                    :value="old('transaction_date', now()->toDateString())" />
+
+                <x-ui.input label="Note" name="description" :value="old('description')"
+                    placeholder="What was it for?" hint="Optional" />
+
+                {{-- Disabled on submit: a double tap must not record the spend
+                     twice, and the label says what is happening. --}}
+                <x-ui.button type="submit" size="lg" class="w-full"
+                    x-bind:disabled="saving">
+                    <span x-show="!saving">Save transaction</span>
+                    <span x-show="saving" x-cloak>Saving…</span>
+                </x-ui.button>
+            </x-ui.card-content>
+        </x-ui.card>
+
+        {{-- Reporting detail, folded away. Nothing optional should stand between
+             the household and a saved entry. --}}
+        <x-ui.card x-data="{ open: {{ old('planned_status') || old('purpose') ? 'true' : 'false' }} }">
+            <button type="button" x-on:click="open = !open"
+                    class="flex w-full items-center justify-between gap-2 px-5 py-3.5 text-left">
+                <span class="text-sm font-medium">Add detail for reports</span>
+                <x-ui.icon name="chevron-down" class="size-4 text-muted-foreground transition-transform"
+                    x-bind:class="open && 'rotate-180'" />
+            </button>
+
+            <div x-show="open" x-cloak class="space-y-4 border-t border-border px-5 py-4">
+                <div>
+                    <p class="mb-2 text-sm font-medium">Did you expect this?</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach ($plannedStatuses as $status)
+                            <label class="chip">
+                                <input type="radio" name="planned_status" value="{{ $status->value }}"
+                                       @checked(old('planned_status') === $status->value)>
+                                <span>{{ $status->label() }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div>
+                    <p class="mb-2 text-sm font-medium">Could you have skipped it?</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach ($purposes as $purpose)
+                            <label class="chip">
+                                <input type="radio" name="purpose" value="{{ $purpose->value }}"
+                                       @checked(old('purpose') === $purpose->value)>
+                                <span>
+                                    <span>{{ $purpose->label() }}</span>
+                                    <span class="chip-meta">{{ $purpose->hint() }}</span>
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <p class="mt-2 text-xs text-muted-foreground">
+                        Feeds the needs-versus-wants split in reports. Skip it if unsure.
+                    </p>
                 </div>
             </div>
-        </div>
+        </x-ui.card>
+
+        <x-ui.alert variant="muted" icon="credit-card" title="Paying by credit card?">
+            Pick the card above. The spend counts today and the card's balance goes up —
+            paying that bill later is a separate step, never counted as spending twice.
+        </x-ui.alert>
     </div>
 </form>
 @endif
 @endsection
 
-@push('head')
-<style>
-    /* Account chips carry more than a name, so they need room to breathe. */
-    .account-chip span {
-        display: inline-flex;
-        flex-direction: column;
-        align-items: flex-start;
-        line-height: 1.2;
-        padding: .4rem .8rem;
-    }
-    .account-chip .acct-name { font-weight: 500; }
-    .account-chip .acct-meta { font-size: .72rem; opacity: .7; }
-    .account-chip input:checked + span .acct-meta { opacity: .85; }
-    .account-group.is-empty { display: none; }
-</style>
-@endpush
-
 @push('scripts')
 <script>
-$(function () {
-    // Subcategories only appear once a parent is chosen, so the form never
-    // shows choices that do not apply yet.
+(function () {
     const subcategories = @json($categories->mapWithKeys(fn ($c) => [
         $c->id => $c->children->map(fn ($child) => ['id' => $child->id, 'name' => $child->name])->values()
     ]));
     const oldSubcategory = @json(old('subcategory_id'));
 
+    const wrap = document.getElementById('subcategoryWrap');
+    const chips = document.getElementById('subcategoryChips');
+
+    // Subcategories only appear once a parent is picked, so the form never shows
+    // choices that do not apply yet.
     function renderSubcategories(parentId) {
         const children = subcategories[parentId] || [];
-        const $wrap = $('#subcategoryWrap');
-        const $chips = $('#subcategoryChips').empty();
+        chips.innerHTML = '';
 
-        if (!children.length) { $wrap.addClass('d-none'); return; }
+        if (!children.length) { wrap.classList.add('hidden'); return; }
 
-        children.forEach(function (child) {
-            const checked = String(oldSubcategory) === String(child.id) ? 'checked' : '';
-            $chips.append(
-                '<label class="chip"><input type="radio" name="subcategory_id" value="' + child.id + '" ' + checked + '>' +
-                '<span>' + $('<div>').text(child.name).html() + '</span></label>'
-            );
+        children.forEach((child) => {
+            const label = document.createElement('label');
+            label.className = 'chip';
+
+            const input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'subcategory_id';
+            input.value = child.id;
+            input.checked = String(oldSubcategory) === String(child.id);
+
+            const span = document.createElement('span');
+            span.textContent = child.name;
+
+            label.append(input, span);
+            chips.append(label);
         });
 
-        $wrap.removeClass('d-none');
+        wrap.classList.remove('hidden');
     }
 
-    $('#categoryChips').on('change', 'input[name="category_id"]', function () {
-        renderSubcategories($(this).val());
+    document.getElementById('categoryChips').addEventListener('change', (e) => {
+        if (e.target.name === 'category_id') renderSubcategories(e.target.value);
     });
 
-    const initialCategory = $('input[name="category_id"]:checked').val();
-    if (initialCategory) renderSubcategories(initialCategory);
+    const initial = document.querySelector('input[name="category_id"]:checked');
+    if (initial) renderSubcategories(initial.value);
 
-    // Filtering by name beats scrolling a wall of chips.
-    $('#accountFilter').on('input', function () {
-        const term = $(this).val().trim().toLowerCase();
-        let visible = 0;
-
-        $('.account-chip').each(function () {
-            const match = !term || $(this).data('search').indexOf(term) !== -1;
-            $(this).toggleClass('d-none', !match);
-            if (match) visible++;
-        });
-
-        $('.account-group').each(function () {
-            const anyVisible = $(this).find('.account-chip').not('.d-none').length > 0;
-            $(this).toggleClass('is-empty', !anyVisible);
-        });
-
-        $('#noAccountMatch').toggleClass('d-none', visible > 0);
-    });
-
-    // Choosing an account suggests who paid. Only fills a blank — either partner
-    // can pay from a joint account, so this must never overrule a choice.
-    $(document).on('change', 'input[name="account_id"]', function () {
-        const ownerId = $(this).data('owner');
-        if (ownerId && !$('input[name="payer_id"]:checked').length) {
-            $('input[name="payer_id"][value="' + ownerId + '"]').prop('checked', true);
+    // Choosing an account suggests who paid. Fills a blank only — either partner
+    // can pay from a joint account, so it must never overrule a real choice.
+    document.addEventListener('change', (e) => {
+        if (e.target.name !== 'account_id') return;
+        const owner = e.target.dataset.owner;
+        if (owner && !document.querySelector('input[name="payer_id"]:checked')) {
+            const payer = document.querySelector('input[name="payer_id"][value="' + owner + '"]');
+            if (payer) payer.checked = true;
         }
     });
 
     // Merchant memory: a known name fills in what it usually is.
-    const merchantsByName = {};
-    @foreach ($merchants as $merchant)
-        merchantsByName[@json(strtolower($merchant->name))] = {{ $merchant->id }};
-    @endforeach
+    const merchantsByName = @json($merchants->mapWithKeys(fn ($m) => [strtolower($m->name) => $m->id]));
+    const merchantName = document.getElementById('merchantName');
+    const merchantId = document.getElementById('merchantId');
+    const merchantHint = document.getElementById('merchantHint');
 
-    function applyMerchantDefaults(id) {
-        $.getJSON('{{ url('merchants') }}/' + id + '/defaults', function (defaults) {
-            const applied = [];
+    function applyDefaults(id) {
+        fetch('{{ url('merchants') }}/' + id + '/defaults', { headers: { 'Accept': 'application/json' } })
+            .then((r) => r.json())
+            .then((d) => {
+                const applied = [];
+                const pick = (name, value) => {
+                    if (!value) return false;
+                    if (document.querySelector('input[name="' + name + '"]:checked')) return false;
+                    const el = document.querySelector('input[name="' + name + '"][value="' + value + '"]');
+                    if (!el) return false;
+                    el.checked = true;
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    return true;
+                };
 
-            if (defaults.category_id && !$('input[name="category_id"]:checked').length) {
-                $('input[name="category_id"][value="' + defaults.category_id + '"]')
-                    .prop('checked', true).trigger('change');
-                applied.push('category');
-            }
-            if (defaults.subcategory_id) {
-                $('input[name="subcategory_id"][value="' + defaults.subcategory_id + '"]').prop('checked', true);
-            }
-            if (defaults.account_id && !$('input[name="account_id"]:checked').length) {
-                $('input[name="account_id"][value="' + defaults.account_id + '"]')
-                    .prop('checked', true).trigger('change');
-                applied.push('account');
-            }
-            if (defaults.payer_id && !$('input[name="payer_id"]:checked').length) {
-                $('input[name="payer_id"][value="' + defaults.payer_id + '"]').prop('checked', true);
-                applied.push('who paid');
-            }
-            if (defaults.beneficiary_id && !$('input[name="beneficiary_id"]:checked').length) {
-                $('input[name="beneficiary_id"][value="' + defaults.beneficiary_id + '"]').prop('checked', true);
-            }
+                if (pick('category_id', d.category_id)) applied.push('category');
+                if (d.subcategory_id) {
+                    const sub = document.querySelector('input[name="subcategory_id"][value="' + d.subcategory_id + '"]');
+                    if (sub) sub.checked = true;
+                }
+                if (pick('account_id', d.account_id)) applied.push('account');
+                if (pick('payer_id', d.payer_id)) applied.push('who paid');
+                pick('beneficiary_id', d.beneficiary_id);
 
-            if (applied.length) {
-                $('#merchantHint').text('Filled in ' + applied.join(', ') + ' from last time — change anything that differs.');
-            }
-        });
+                if (applied.length) {
+                    merchantHint.textContent = 'Filled in ' + applied.join(', ') +
+                        ' from last time — change anything that differs.';
+                }
+            })
+            .catch(() => {});
     }
 
-    $('#merchantName').on('change blur', function () {
-        const id = merchantsByName[$(this).val().trim().toLowerCase()];
-        $('#merchantId').val(id || '');
-        if (id) applyMerchantDefaults(id);
-    });
-
-    // A double tap must not record the same spend twice.
-    $('#quickEntryForm').on('submit', function () {
-        $(this).find('button[type="submit"]').prop('disabled', true).text('Saving…');
-    });
-});
+    ['change', 'blur'].forEach((evt) => merchantName.addEventListener(evt, () => {
+        const id = merchantsByName[merchantName.value.trim().toLowerCase()];
+        merchantId.value = id || '';
+        if (id) applyDefaults(id);
+    }));
+})();
 </script>
 @endpush

@@ -1,25 +1,26 @@
 @extends('layouts.app')
 
 @section('title', 'Edit account')
-@section('heading', 'Edit ' . $account->name)
+@section('heading', 'Edit '.$account->name)
+
+@section('actions')
+    <x-ui.button :href="route('accounts.show', $account)" variant="outline">View ledger</x-ui.button>
+@endsection
 
 @section('content')
-<div class="row">
-    <div class="col-lg-9 col-xl-7">
-        <form method="POST" action="{{ route('accounts.update', $account) }}">
-            @csrf
-            @method('PUT')
-            <div class="card">
-                <div class="card-body">
-                    @include('accounts._form')
-                </div>
-                <div class="card-footer bg-white d-flex gap-2">
-                    <button class="btn btn-primary">Save changes</button>
-                    <a href="{{ route('accounts.index') }}" class="btn btn-outline-secondary">Cancel</a>
-                    <a href="{{ route('accounts.show', $account) }}" class="btn btn-link ms-auto">View ledger</a>
-                </div>
+<div class="max-w-2xl">
+    <form method="POST" action="{{ route('accounts.update', $account) }}">
+        @csrf
+        @method('PUT')
+        <x-ui.card>
+            <x-ui.card-content>
+                @include('accounts._form')
+            </x-ui.card-content>
+            <div class="flex gap-2 border-t border-border px-5 py-3.5">
+                <x-ui.button type="submit">Save changes</x-ui.button>
+                <x-ui.button :href="route('accounts.index')" variant="ghost">Cancel</x-ui.button>
             </div>
-        </form>
-    </div>
+        </x-ui.card>
+    </form>
 </div>
 @endsection

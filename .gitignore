@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Tailwind standalone CLI — a 112MB binary, downloaded not committed.
+# Node 18 here cannot run Vite 7, so the standalone compiler builds our CSS.
+/tools

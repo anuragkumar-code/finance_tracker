@@ -5,20 +5,18 @@
 @section('subheading', 'Record where your money sits today')
 
 @section('content')
-<div class="row">
-    <div class="col-lg-9 col-xl-7">
-        <form method="POST" action="{{ route('accounts.store') }}">
-            @csrf
-            <div class="card">
-                <div class="card-body">
-                    @include('accounts._form', ['account' => null])
-                </div>
-                <div class="card-footer bg-white d-flex gap-2">
-                    <button class="btn btn-primary">Save account</button>
-                    <a href="{{ route('accounts.index') }}" class="btn btn-outline-secondary">Cancel</a>
-                </div>
+<div class="max-w-2xl">
+    <form method="POST" action="{{ route('accounts.store') }}">
+        @csrf
+        <x-ui.card>
+            <x-ui.card-content>
+                @include('accounts._form', ['account' => null])
+            </x-ui.card-content>
+            <div class="flex gap-2 border-t border-border px-5 py-3.5">
+                <x-ui.button type="submit">Save account</x-ui.button>
+                <x-ui.button :href="route('accounts.index')" variant="ghost">Cancel</x-ui.button>
             </div>
-        </form>
-    </div>
+        </x-ui.card>
+    </form>
 </div>
 @endsection

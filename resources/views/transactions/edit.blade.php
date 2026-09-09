@@ -5,174 +5,135 @@
 @section('subheading', 'Balances are recalculated automatically when you save')
 
 @section('content')
-@php($isTransfer = $transaction->type === \App\Enums\TransactionType::Transfer)
+@php
+    $isTransfer = $transaction->type === \App\Enums\TransactionType::Transfer;
+    $fromLeg = $isTransfer ? ($transaction->leg_role->isSource() ? $transaction : $counterpart) : null;
+    $toLeg = $isTransfer ? ($transaction->leg_role->isSource() ? $counterpart : $transaction) : null;
+@endphp
 
-<div class="row">
-    <div class="col-lg-8 col-xl-6">
-        <form method="POST" action="{{ route('transactions.update', $transaction) }}">
-            @csrf
-            @method('PUT')
-            <div class="card">
-                <div class="card-body">
+<div class="max-w-2xl">
+    <form method="POST" action="{{ route('transactions.update', $transaction) }}">
+        @csrf
+        @method('PUT')
 
-                    @if ($isTransfer)
-                        <div class="alert alert-info small">
-                            Both sides of this transfer are updated together, so they can never disagree.
-                        </div>
+        <x-ui.card>
+            <x-ui.card-content class="space-y-4">
+                @if ($isTransfer)
+                    <x-ui.alert variant="info">
+                        Both sides of this transfer update together, so the two amounts can never
+                        disagree.
+                    </x-ui.alert>
 
-                        @php($fromLeg = $transaction->leg_role->isSource() ? $transaction : $counterpart)
-                        @php($toLeg = $transaction->leg_role->isSource() ? $counterpart : $transaction)
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="from_account_id" class="form-label">From</label>
-                                <select name="from_account_id" id="from_account_id" class="form-select" required>
-                                    @foreach ($accounts as $account)
-                                        <option value="{{ $account->id }}"
-                                                @selected(old('from_account_id', $fromLeg?->account_id) == $account->id)>
-                                            {{ $account->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="to_account_id" class="form-label">To</label>
-                                <select name="to_account_id" id="to_account_id" class="form-select" required>
-                                    @foreach ($accounts as $account)
-                                        <option value="{{ $account->id }}"
-                                                @selected(old('to_account_id', $toLeg?->account_id) == $account->id)>
-                                            {{ $account->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    @else
-                        <div class="mb-3">
-                            <label for="account_id" class="form-label">Account</label>
-                            <select name="account_id" id="account_id" class="form-select" required>
-                                @foreach ($accounts as $account)
-                                    <option value="{{ $account->id }}"
-                                            @selected(old('account_id', $transaction->account_id) == $account->id)>
-                                        {{ $account->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="form-text">
-                                Switching between a bank account and a credit card flips how this entry
-                                affects the balance — that is handled for you.
-                            </div>
-                        </div>
-                    @endif
-
-                    <div class="row g-3 mt-0">
-                        <div class="col-md-6">
-                            <label for="amount" class="form-label">Amount</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="text" inputmode="decimal" name="amount" id="amount"
-                                       class="form-control money"
-                                       value="{{ old('amount', $transaction->amount) }}" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="transaction_date" class="form-label">Date</label>
-                            <input type="date" name="transaction_date" id="transaction_date" class="form-control"
-                                   value="{{ old('transaction_date', $transaction->transaction_date->toDateString()) }}"
-                                   required>
-                        </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.select label="From" name="from_account_id" required>
+                            @foreach ($accounts as $account)
+                                <option value="{{ $account->id }}"
+                                        @selected(old('from_account_id', $fromLeg?->account_id) == $account->id)>
+                                    {{ $account->name }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
+                        <x-ui.select label="To" name="to_account_id" required>
+                            @foreach ($accounts as $account)
+                                <option value="{{ $account->id }}"
+                                        @selected(old('to_account_id', $toLeg?->account_id) == $account->id)>
+                                    {{ $account->name }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
                     </div>
+                @else
+                    <x-ui.select label="Account" name="account_id" required
+                        hint="Switching between a bank account and a card flips how this affects the balance — that is handled for you.">
+                        @foreach ($accounts as $account)
+                            <option value="{{ $account->id }}"
+                                    @selected(old('account_id', $transaction->account_id) == $account->id)>
+                                {{ $account->name }}@if ($account->owner) · {{ $account->owner->name }}@endif
+                            </option>
+                        @endforeach
+                    </x-ui.select>
+                @endif
 
-                    @unless ($isTransfer)
-                        <div class="row g-3 mt-0">
-                            <div class="col-md-6">
-                                <label for="category_id" class="form-label">Category</label>
-                                <select name="category_id" id="category_id" class="form-select">
-                                    <option value="">—</option>
-                                    @foreach ($categories as $category)
-                                        <option value="{{ $category->id }}"
-                                                @selected(old('category_id', $transaction->category_id) == $category->id)>
-                                            {{ $category->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="merchant_id" class="form-label">Merchant</label>
-                                <select name="merchant_id" id="merchant_id" class="form-select">
-                                    <option value="">—</option>
-                                    @foreach ($merchants as $merchant)
-                                        <option value="{{ $merchant->id }}"
-                                                @selected(old('merchant_id', $transaction->merchant_id) == $merchant->id)>
-                                            {{ $merchant->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="payer_id" class="form-label">Paid by</label>
-                                <select name="payer_id" id="payer_id" class="form-select">
-                                    <option value="">—</option>
-                                    @foreach ($payers as $person)
-                                        <option value="{{ $person->id }}"
-                                                @selected(old('payer_id', $transaction->payer_id) == $person->id)>
-                                            {{ $person->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="beneficiary_id" class="form-label">For</label>
-                                <select name="beneficiary_id" id="beneficiary_id" class="form-select">
-                                    <option value="">—</option>
-                                    @foreach ($beneficiaries as $person)
-                                        <option value="{{ $person->id }}"
-                                                @selected(old('beneficiary_id', $transaction->beneficiary_id) == $person->id)>
-                                            {{ $person->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="planned_status" class="form-label">Planned</label>
-                                <select name="planned_status" id="planned_status" class="form-select">
-                                    <option value="">—</option>
-                                    @foreach ($plannedStatuses as $status)
-                                        <option value="{{ $status->value }}"
-                                                @selected(old('planned_status', $transaction->planned_status?->value) === $status->value)>
-                                            {{ $status->label() }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="purpose" class="form-label">Purpose</label>
-                                <select name="purpose" id="purpose" class="form-select">
-                                    <option value="">—</option>
-                                    @foreach ($purposes as $purpose)
-                                        <option value="{{ $purpose->value }}"
-                                                @selected(old('purpose', $transaction->purpose?->value) === $purpose->value)>
-                                            {{ $purpose->label() }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    @endunless
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.input label="Amount" name="amount" inputmode="decimal" prefix="₹"
+                        :value="old('amount', $transaction->amount)" required />
+                    <x-ui.input label="Date" name="transaction_date" type="date"
+                        :value="old('transaction_date', $transaction->transaction_date->toDateString())" required />
+                </div>
 
-                    <div class="mt-3">
-                        <label for="description" class="form-label">Note</label>
-                        <input type="text" name="description" id="description" class="form-control"
-                               value="{{ old('description', $transaction->description) }}">
+                @unless ($isTransfer)
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.select label="Category" name="category_id">
+                            <option value="">—</option>
+                            @foreach ($categories as $category)
+                                <option value="{{ $category->id }}"
+                                        @selected(old('category_id', $transaction->category_id) == $category->id)>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
+
+                        <x-ui.select label="Merchant" name="merchant_id">
+                            <option value="">—</option>
+                            @foreach ($merchants as $merchant)
+                                <option value="{{ $merchant->id }}"
+                                        @selected(old('merchant_id', $transaction->merchant_id) == $merchant->id)>
+                                    {{ $merchant->name }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
+
+                        <x-ui.select label="Paid by" name="payer_id">
+                            <option value="">—</option>
+                            @foreach ($payers as $person)
+                                <option value="{{ $person->id }}"
+                                        @selected(old('payer_id', $transaction->payer_id) == $person->id)>
+                                    {{ $person->name }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
+
+                        <x-ui.select label="For" name="beneficiary_id">
+                            <option value="">—</option>
+                            @foreach ($beneficiaries as $person)
+                                <option value="{{ $person->id }}"
+                                        @selected(old('beneficiary_id', $transaction->beneficiary_id) == $person->id)>
+                                    {{ $person->name }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
+
+                        <x-ui.select label="Planned" name="planned_status">
+                            <option value="">—</option>
+                            @foreach ($plannedStatuses as $status)
+                                <option value="{{ $status->value }}"
+                                        @selected(old('planned_status', $transaction->planned_status?->value) === $status->value)>
+                                    {{ $status->label() }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
+
+                        <x-ui.select label="Purpose" name="purpose">
+                            <option value="">—</option>
+                            @foreach ($purposes as $purpose)
+                                <option value="{{ $purpose->value }}"
+                                        @selected(old('purpose', $transaction->purpose?->value) === $purpose->value)>
+                                    {{ $purpose->label() }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
                     </div>
+                @endunless
 
-                </div>
-                <div class="card-footer bg-white d-flex gap-2">
-                    <button class="btn btn-primary">Save changes</button>
-                    <a href="{{ route('transactions.show', $transaction) }}" class="btn btn-outline-secondary">Cancel</a>
-                </div>
+                <x-ui.input label="Note" name="description"
+                    :value="old('description', $transaction->description)" />
+            </x-ui.card-content>
+
+            <div class="flex gap-2 border-t border-border px-5 py-3.5">
+                <x-ui.button type="submit">Save changes</x-ui.button>
+                <x-ui.button :href="route('transactions.show', $transaction)" variant="ghost">Cancel</x-ui.button>
             </div>
-        </form>
-    </div>
+        </x-ui.card>
+    </form>
 </div>
 @endsection

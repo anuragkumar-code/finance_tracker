@@ -5,20 +5,18 @@
 @section('subheading', 'Its limit, billing cycle, and what you owe today')
 
 @section('content')
-<div class="row">
-    <div class="col-lg-9 col-xl-7">
-        <form method="POST" action="{{ route('credit-cards.store') }}">
-            @csrf
-            <div class="card">
-                <div class="card-body">
-                    @include('credit-cards._form', ['card' => null])
-                </div>
-                <div class="card-footer bg-white d-flex gap-2">
-                    <button class="btn btn-primary">Save card</button>
-                    <a href="{{ route('credit-cards.index') }}" class="btn btn-outline-secondary">Cancel</a>
-                </div>
+<div class="max-w-2xl">
+    <form method="POST" action="{{ route('credit-cards.store') }}">
+        @csrf
+        <x-ui.card>
+            <x-ui.card-content>
+                @include('credit-cards._form', ['card' => null])
+            </x-ui.card-content>
+            <div class="flex gap-2 border-t border-border px-5 py-3.5">
+                <x-ui.button type="submit">Save card</x-ui.button>
+                <x-ui.button :href="route('credit-cards.index')" variant="ghost">Cancel</x-ui.button>
             </div>
-        </form>
-    </div>
+        </x-ui.card>
+    </form>
 </div>
 @endsection

@@ -1,26 +1,29 @@
 {{--
     One selectable account in Quick Entry.
 
-    Name on top, owner and kind underneath — with two "BOB Bank" accounts in the
-    household, the owner is what tells them apart, so it cannot be an
-    afterthought squeezed onto one line.
+    Name on top, owner and kind underneath — the household has two accounts both
+    called "BOB Bank", so the owner is what tells them apart and cannot be
+    squeezed onto the end of one line.
 
-    data-search powers the filter box; data-owner lets the form suggest a payer.
+    x-show wires into the filter box on the parent card; data-owner lets the form
+    suggest a payer from whoever owns the account.
 --}}
 @php
     $isCard = $isCard ?? $account->isLiability();
     $ownerName = $account->owner?->name;
+    $search = strtolower($account->name.' '.$ownerName.' '.$account->type->label());
 @endphp
 
-<label class="chip account-chip"
-       data-search="{{ strtolower($account->name.' '.$ownerName.' '.$account->type->label()) }}">
+<label class="chip"
+       x-show="filter === '' || '{{ $search }}'.includes(filter.toLowerCase())"
+       x-bind:hidden="!(filter === '' || '{{ $search }}'.includes(filter.toLowerCase()))">
     <input type="radio" name="account_id" value="{{ $account->id }}"
            data-owner="{{ $account->owner_id }}"
            @checked(old('account_id') == $account->id)>
     <span>
-        <span class="acct-name">{{ $account->name }}</span>
-        <span class="acct-meta">
-            {{ $ownerName ?: 'no owner set' }}{{ $isCard ? ' · card' : '' }}
+        <span>{{ $account->name }}</span>
+        <span class="chip-meta">
+            {{ $ownerName ?: 'no owner' }}{{ $isCard ? ' · card' : '' }}
         </span>
     </span>
 </label>

@@ -1,45 +1,32 @@
 @php($account = $account ?? null)
 
-<div class="row g-3">
-    <div class="col-md-6">
-        <label for="name" class="form-label">Name</label>
-        <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
-               value="{{ old('name', $account?->name) }}" placeholder="HDFC Bank" required>
-        @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    </div>
+<div class="space-y-4">
+    <div class="grid gap-4 sm:grid-cols-2">
+        <x-ui.input label="Name" name="name" :value="old('name', $account?->name)"
+            placeholder="HDFC Bank" required />
 
-    <div class="col-md-6">
-        <label for="type" class="form-label">Type</label>
-        <select name="type" id="type" class="form-select @error('type') is-invalid @enderror"
-                @disabled(($hasActivity ?? false))>
+        <x-ui.select label="Type" name="type" :disabled="$hasActivity ?? false">
             @foreach ($types as $type)
-                <option value="{{ $type->value }}"
-                        @selected(old('type', $account?->type?->value) === $type->value)>
+                <option value="{{ $type->value }}" @selected(old('type', $account?->type?->value) === $type->value)>
                     {{ $type->label() }}
                 </option>
             @endforeach
-        </select>
-        @error('type')<div class="invalid-feedback">{{ $message }}</div>@enderror
-        @if ($hasActivity ?? false)
-            {{-- Changing an account between asset and liability would invert every
-                 entry already posted against it. --}}
-            <input type="hidden" name="type" value="{{ $account->type->value }}">
-            <div class="form-text">
-                This account already has transactions, so its type is locked.
-                Mark it inactive and create a new account if it needs to change.
-            </div>
-        @endif
+        </x-ui.select>
     </div>
 
-    <div class="col-md-6">
-        <label for="institution" class="form-label">Institution <span class="text-body-secondary">(optional)</span></label>
-        <input type="text" name="institution" id="institution" class="form-control"
-               value="{{ old('institution', $account?->institution) }}" placeholder="HDFC">
-    </div>
+    @if ($hasActivity ?? false)
+        {{-- Switching an account between asset and liability would invert every
+             entry already posted against it. --}}
+        <input type="hidden" name="type" value="{{ $account->type->value }}">
+        <x-ui.alert variant="muted">
+            This account already has transactions, so its type is locked. Mark it inactive and
+            create a new account if it genuinely needs to change.
+        </x-ui.alert>
+    @endif
 
-    <div class="col-md-6">
-        <label class="form-label">Whose account</label>
-        <div class="chip-group">
+    <div>
+        <p class="mb-2 text-sm font-medium">Whose account</p>
+        <div class="flex flex-wrap gap-1.5">
             @foreach ($owners as $owner)
                 <label class="chip">
                     <input type="radio" name="owner_id" value="{{ $owner->id }}"
@@ -55,78 +42,37 @@
         </div>
     </div>
 
-    <div class="col-md-6">
-        <label for="currency" class="form-label">Currency</label>
-        <input type="text" name="currency" id="currency" class="form-control" maxlength="3"
-               value="{{ old('currency', $account?->currency ?? 'INR') }}">
+    <div class="grid gap-4 sm:grid-cols-2">
+        <x-ui.input label="Institution" name="institution"
+            :value="old('institution', $account?->institution)" placeholder="HDFC" hint="Optional" />
+
+        <x-ui.input label="Currency" name="currency" maxlength="3"
+            :value="old('currency', $account?->currency ?? 'INR')" />
+
+        <x-ui.input label="Balance today" name="opening_balance" inputmode="decimal" prefix="₹"
+            :value="old('opening_balance', $account?->opening_balance ?? '0.00')" required
+            hint="For a card or loan, enter what you owe as a positive number." />
+
+        <x-ui.input label="As of" name="opening_balance_date" type="date"
+            :value="old('opening_balance_date', optional($account?->opening_balance_date)->toDateString() ?? now()->toDateString())"
+            required
+            hint="Your starting position. Entries dated before this are history and will not move this balance." />
     </div>
 
-    <div class="col-md-6">
-        <label for="opening_balance" class="form-label">Balance today</label>
-        <div class="input-group">
-            <span class="input-group-text">₹</span>
-            <input type="text" inputmode="decimal" name="opening_balance" id="opening_balance"
-                   class="form-control money @error('opening_balance') is-invalid @enderror"
-                   value="{{ old('opening_balance', $account?->opening_balance ?? '0.00') }}" required>
-            @error('opening_balance')<div class="invalid-feedback">{{ $message }}</div>@enderror
-        </div>
-        <div class="form-text" id="openingHelp">
-            For a credit card or loan, enter what you currently owe as a positive number.
-        </div>
-    </div>
+    <x-ui.textarea label="Notes" name="notes" rows="2" hint="Optional">{{ old('notes', $account?->notes) }}</x-ui.textarea>
 
-    <div class="col-md-6">
-        <label for="opening_balance_date" class="form-label">As of</label>
-        <input type="date" name="opening_balance_date" id="opening_balance_date"
-               class="form-control @error('opening_balance_date') is-invalid @enderror"
-               value="{{ old('opening_balance_date', optional($account?->opening_balance_date)->toDateString() ?? now()->toDateString()) }}"
-               required>
-        @error('opening_balance_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
-        <div class="form-text">
-            Your starting position. Entries dated before this are treated as history and
-            will not move this balance.
-        </div>
-    </div>
+    <div class="space-y-3 border-t border-border pt-4">
+        {{-- An emergency fund is real money that must never read as spendable. --}}
+        <x-ui.checkbox name="is_set_aside" :checked="old('is_set_aside', $account?->is_set_aside)"
+            label="Set aside — don't count this as money we can spend"
+            hint="For an emergency fund or anything ring-fenced. It is left out of every total, report and chart, but stays reachable on the Accounts page so you can transfer into it." />
 
-    <div class="col-12">
-        <label for="notes" class="form-label">Notes <span class="text-body-secondary">(optional)</span></label>
-        <textarea name="notes" id="notes" class="form-control" rows="2">{{ old('notes', $account?->notes) }}</textarea>
-    </div>
+        <x-ui.input label="What it is for" name="set_aside_reason"
+            :value="old('set_aside_reason', $account?->set_aside_reason)"
+            placeholder="Emergency fund" hint="Optional" />
 
-    {{-- An emergency fund is real money that must never read as spendable. --}}
-    <div class="col-12">
-        <div class="form-check">
-            <input type="hidden" name="is_set_aside" value="0">
-            <input type="checkbox" name="is_set_aside" id="is_set_aside" value="1" class="form-check-input"
-                   @checked(old('is_set_aside', $account?->is_set_aside))>
-            <label class="form-check-label" for="is_set_aside">
-                Set aside — don't count this as money we can spend
-            </label>
-        </div>
-        <div class="form-text">
-            For an emergency fund or anything ring-fenced. It is left out of your available
-            balance and out of "realistically available", so it never tempts a decision.
-            It still counts towards net worth, because you do own it.
-        </div>
+        @if ($account)
+            <x-ui.checkbox name="is_active" :checked="old('is_active', $account->is_active)" label="Active" />
+        @endif
     </div>
-
-    <div class="col-md-6">
-        <label for="set_aside_reason" class="form-label">
-            What it is for <span class="text-body-secondary">(optional)</span>
-        </label>
-        <input type="text" name="set_aside_reason" id="set_aside_reason" class="form-control"
-               value="{{ old('set_aside_reason', $account?->set_aside_reason) }}"
-               placeholder="Emergency fund">
-    </div>
-
-    @if ($account)
-        <div class="col-12">
-            <div class="form-check">
-                <input type="hidden" name="is_active" value="0">
-                <input type="checkbox" name="is_active" id="is_active" value="1" class="form-check-input"
-                       @checked(old('is_active', $account->is_active))>
-                <label class="form-check-label" for="is_active">Active</label>
-            </div>
-        </div>
-    @endif
 </div>
