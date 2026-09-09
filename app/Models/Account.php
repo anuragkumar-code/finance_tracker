@@ -123,6 +123,20 @@ class Account extends Model
         return $query->where('is_set_aside', true);
     }
 
+    /**
+     * Accounts whose money counts towards household totals.
+     *
+     * Set-aside money is excluded from every aggregate — available balance,
+     * net worth, reports, the lot. The household asked for the emergency fund
+     * to be invisible in the numbers so it never enters a spending decision,
+     * even subconsciously. The account itself stays usable: money can still be
+     * transferred into it, and it is listed on its own on the Accounts page.
+     */
+    public function scopeCounted(Builder $query): Builder
+    {
+        return $query->where("is_set_aside", false);
+    }
+
     public function scopeAssets(Builder $query): Builder
     {
         return $query->where('normal_balance', NormalBalance::Asset->value);

@@ -25,10 +25,7 @@
             <div class="stat-label">You own</div>
             <div class="stat-value money money-pos">@inr($netWorth['assets'])</div>
             <div class="small text-body-secondary mt-1">
-                @inr($netWorth['bank_cash']) available
-                @if (bccomp($netWorth['set_aside'], '0', 2) === 1)
-                    · @inr($netWorth['set_aside']) set aside
-                @endif
+                @inr($netWorth['bank_cash']) in bank &amp; cash
             </div>
         </div></div>
     </div>
@@ -147,5 +144,60 @@
         </div>
     </div>
 @endforelse
+
+@if ($setAside->isNotEmpty())
+    {{-- Kept off every other screen and out of every total, but reachable here
+         so money can still be moved into it. --}}
+    <div class="card mt-4 border-info">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <span>Set aside</span>
+            <span class="small text-body-secondary fw-normal">
+                not counted in any total, report or net worth
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Account</th>
+                        <th>Whose</th>
+                        <th>What for</th>
+                        <th class="text-end">Balance</th>
+                        <th style="width:1%"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach ($setAside as $account)
+                    <tr>
+                        <td>
+                            <a href="{{ route('accounts.show', $account) }}" class="text-decoration-none fw-medium">
+                                {{ $account->name }}
+                            </a>
+                            <div class="small text-body-secondary">{{ $account->type->label() }}</div>
+                        </td>
+                        <td>
+                            @if ($account->owner)
+                                <span class="badge text-bg-light border">{{ $account->owner->name }}</span>
+                            @else
+                                <span class="text-body-secondary small">&mdash;</span>
+                            @endif
+                        </td>
+                        <td class="text-body-secondary">{{ $account->set_aside_reason ?: 'Set aside' }}</td>
+                        <td class="text-end money">@inr($account->cached_balance)</td>
+                        <td class="text-end">
+                            <a href="{{ route('accounts.edit', $account) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white small text-body-secondary">
+            This money is invisible everywhere else in the app &mdash; it is not in your available
+            balance, net worth, reports or charts. You can still transfer into it from
+            <a href="{{ route('transactions.create', ['type' => 'transfer']) }}">Transactions &rarr; Transfer</a>.
+        </div>
+    </div>
+@endif
 
 @endsection

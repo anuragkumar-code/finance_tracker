@@ -341,7 +341,11 @@ class SpendingReportService
         return Transaction::query()
             ->inPeriod($start, $end)
             ->where('balance_effect', $effect->value)
-            ->whereHas('account', fn ($q) => $q->where('normal_balance', NormalBalance::Asset->value));
+            ->whereHas('account', fn ($q) => $q
+                ->where('normal_balance', NormalBalance::Asset->value)
+                // A transfer into the emergency fund should read as money
+                // leaving, not as an internal move that nets to zero.
+                ->where('is_set_aside', false));
     }
 
     /** @return array<int|string, string> */

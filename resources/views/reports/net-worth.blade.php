@@ -57,9 +57,6 @@
                             <a href="{{ route('accounts.show', $account) }}" class="text-decoration-none">
                                 {{ $account->name }}
                             </a>
-                            @if ($account->is_set_aside)
-                                <span class="badge text-bg-info">{{ $account->set_aside_reason ?: 'set aside' }}</span>
-                            @endif
                             <div class="small text-body-secondary">
                                 {{ $account->type->label() }}@if ($account->owner) · {{ $account->owner->name }}@endif
                             </div>
@@ -88,16 +85,7 @@
                         <th>Total</th>
                         <th class="text-end money">@inr($summary['assets'])</th>
                     </tr>
-                    @if (bccomp($summary['set_aside'], '0', 2) === 1)
-                        <tr>
-                            <td class="small text-body-secondary border-0">
-                                of which set aside, not available to spend
-                            </td>
-                            <td class="text-end money small text-body-secondary border-0">
-                                @inr($summary['set_aside'])
-                            </td>
-                        </tr>
-                    @endif
+
                 </tfoot>
             </table>
         </div>
@@ -157,8 +145,8 @@
         <strong class="text-body">How loan debt is counted here.</strong>
         Loans show the cash still to pay — remaining EMIs multiplied by the EMI amount — so the
         figure includes future interest. That is deliberately conservative: it is larger than the
-        principal your lender would quote to close the loan early. Set-aside money is included in
-        what you own, because you do own it; it is simply never treated as available to spend.
+        principal your lender would quote to close the loan early. Set-aside money is left out entirely
+        — an emergency fund does not appear in any figure on this page.
     </div>
 </div>
 

@@ -15,19 +15,21 @@ use App\Models\Loan;
  * Accounts page could report a healthy net worth while ignoring lakhs of loan
  * debt. A number that wrong is worse than no number at all.
  *
- * Two things this deliberately does NOT do:
- *
- * - It does not exclude set-aside money. An emergency fund is not spendable, but
- *   the household still owns it; leaving it out would understate their position
- *   as badly as leaving out the loans overstated it. It is reported separately
- *   so the distinction stays visible.
- * - It does not guess at the value of an unvalued asset. Those are counted and
- *   reported as a caveat instead, so a partial picture is never mistaken for a
- *   complete one.
+ * SET-ASIDE MONEY IS EXCLUDED FROM EVERYTHING HERE. The household's emergency
+ * fund is deliberately absent from net worth, assets and every total, at their
+ * explicit instruction: they want it out of sight so it can never enter a
+ * spending decision. That makes net worth a picture of the money in play rather
+ * than of everything owned, which is the trade-off they chose knowingly. The
+ * `set_aside` figure is still returned so the Accounts page can show the account
+ * on its own — nothing else consumes it.
  *
  * Loan debt is REMAINING CASH TO PAY (remaining EMIs x EMI amount), which
  * includes future interest, because the simplified loan model tracks EMIs rather
  * than principal (design doc D11) — the conservative direction, and labelled.
+ *
+ * Unvalued assets contribute nothing, and are counted so the screen can say the
+ * figure is more pessimistic than reality rather than passing off a partial
+ * picture as a complete one.
  */
 class NetWorthService
 {
@@ -44,19 +46,29 @@ class NetWorthService
     public function summary(): array
     {
         $spendable = $this->sumAccounts(Account::query()->active()->spendableCash());
-        $setAside = $this->sumAccounts(Account::query()->active()->setAside());
-        $investments = $this->sumAccounts(Account::query()->active()->ofType(AccountType::Investment));
 
-        $accountAssets = $this->sumAccounts(Account::query()->active()->assets());
+        // Reported only so the Accounts page can list the account separately.
+        // No total below includes it.
+        $setAside = $this->sumAccounts(Account::query()->active()->setAside());
+
+        $investments = $this->sumAccounts(
+            Account::query()->active()->counted()->ofType(AccountType::Investment)
+        );
+
+        $accountAssets = $this->sumAccounts(Account::query()->active()->counted()->assets());
         $assetValue = $this->assetValue();
         $assets = bcadd($accountAssets, $assetValue, self::SCALE);
 
-        $cardDebt = $this->sumAccounts(Account::query()->active()->ofType(AccountType::CreditCard));
-        $otherLiabilities = $this->sumAccounts(Account::query()->active()->ofType(AccountType::OtherLiability));
+        $cardDebt = $this->sumAccounts(
+            Account::query()->active()->counted()->ofType(AccountType::CreditCard)
+        );
+        $otherLiabilities = $this->sumAccounts(
+            Account::query()->active()->counted()->ofType(AccountType::OtherLiability)
+        );
         $loanDebt = $this->loanDebt();
 
         $liabilities = bcadd(
-            $this->sumAccounts(Account::query()->active()->liabilities()),
+            $this->sumAccounts(Account::query()->active()->counted()->liabilities()),
             $loanDebt,
             self::SCALE,
         );

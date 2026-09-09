@@ -26,11 +26,20 @@ class AccountController extends Controller
 
         $accounts = Account::query()
             ->with('owner')
+            ->counted()
             ->when($owner, fn ($q) => $q->ownedBy($owner))
             ->orderBy('type')->orderBy('name')->get();
 
+        // Set-aside accounts are kept out of every total and every other screen,
+        // but must stay reachable here — otherwise the household could not
+        // transfer into the fund or correct its balance.
+        $setAside = Account::query()->with('owner')->active()->setAside()
+            ->when($owner, fn ($q) => $q->ownedBy($owner))
+            ->orderBy('name')->get();
+
         return view('accounts.index', [
             'accounts' => $accounts->groupBy(fn (Account $a) => $a->type->label()),
+            'setAside' => $setAside,
             'netWorth' => $this->netWorth->summary(),
             'owners' => Person::query()->active()->payers()->ordered()->get(),
             'selectedOwner' => $owner,

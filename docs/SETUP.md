@@ -124,10 +124,19 @@ is excluded from every "what can we spend" figure — available balance, the
 dashboard, and "realistically available" — so an emergency fund never quietly
 becomes part of the budget.
 
-It is still counted in **net worth**, because you do own it. Leaving it out there
-would understate your real position as badly as ignoring your loans would
-overstate it. The Accounts and Net worth screens show it as a separate
-"set aside" line so the distinction stays visible.
+It is excluded from **everything**: available balance, net worth, assets, cash
+flow, reports and charts. The one place it appears is its own "Set aside"
+section at the bottom of the Accounts page, so you can still see the balance,
+edit the account, and transfer money into it.
+
+The trade-off, stated plainly: net worth now describes the money in play rather
+than everything you own, and it is lower than your true position by the amount
+of the fund. That is deliberate — the household asked for the fund to be out of
+sight so it can never enter a spending decision.
+
+Moving money into a set-aside account reads as money *leaving* in cash-flow
+reports, rather than an internal transfer that nets to zero. It is still not
+counted as spending.
 
 ## Assets
 

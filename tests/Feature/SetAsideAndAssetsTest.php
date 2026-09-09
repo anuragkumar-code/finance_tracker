@@ -20,9 +20,9 @@ use Tests\TestCase;
 /**
  * Ring-fenced money and things owned outside accounts.
  *
- * The rule under test: an emergency fund must never read as spendable, but must
- * still count as owned. Getting either half wrong misleads in a different
- * direction.
+ * The rule under test: an emergency fund is invisible in every figure the app
+ * reports — available balance, net worth, assets, cash flow, charts — while the
+ * account itself stays fully usable so money can be moved into it.
  */
 class SetAsideAndAssetsTest extends TestCase
 {
@@ -77,21 +77,51 @@ class SetAsideAndAssetsTest extends TestCase
         $this->assertSame('50000.00', $reality['available']);
     }
 
-    public function test_set_aside_money_still_counts_as_owned(): void
+    public function test_set_aside_money_is_absent_from_net_worth_and_assets(): void
     {
         $this->account('Everyday', '50000');
         $this->account('Emergency fund', '225000', setAside: true);
 
         $summary = app(NetWorthService::class)->summary();
 
-        // Owned in full — pretending it does not exist would understate the
-        // household's real position.
-        $this->assertSame('275000.00', $summary['assets']);
-        $this->assertSame('275000.00', $summary['net_worth']);
-
-        // But reported apart, so the distinction is visible.
+        // The household asked for the emergency fund to be invisible in every
+        // figure, so net worth describes the money in play rather than
+        // everything owned. That trade-off was theirs, made knowingly.
+        $this->assertSame('50000.00', $summary['assets']);
+        $this->assertSame('50000.00', $summary['net_worth']);
         $this->assertSame('50000.00', $summary['bank_cash']);
+
+        // Still reported on its own, purely so the Accounts page can list it.
         $this->assertSame('225000.00', $summary['set_aside']);
+    }
+
+    public function test_moving_money_into_the_fund_reads_as_money_leaving(): void
+    {
+        $everyday = $this->account('Everyday', '50000');
+        $fund = $this->account('Emergency fund', '0', setAside: true);
+
+        app(\App\Services\TransferService::class)->create([
+            'transaction_date' => '2026-09-08',
+            'from_account_id' => $everyday->id,
+            'to_account_id' => $fund->id,
+            'amount' => '10000',
+        ]);
+
+        $reports = app(SpendingReportService::class);
+
+        // The transfer out is visible; the leg landing in the fund is not, so
+        // the money reads as gone from the pool the household actually uses
+        // rather than netting to zero.
+        $this->assertSame('10000.00', $reports->cashOutflow('2026-09-01', '2026-09-30'));
+        $this->assertSame('0.00', $reports->cashInflow('2026-09-01', '2026-09-30'));
+        $this->assertSame('-10000.00', $reports->netCashMovement('2026-09-01', '2026-09-30'));
+
+        // And it is still not spending.
+        $this->assertSame('0.00', $reports->totalSpending('2026-09-01', '2026-09-30'));
+
+        // The fund did receive it, though — the transfer genuinely happened.
+        $this->assertSame('10000.00', (string) $fund->refresh()->cached_balance);
+        $this->assertSame('40000.00', (string) $everyday->refresh()->cached_balance);
     }
 
     public function test_an_account_can_be_marked_set_aside_through_the_form(): void
@@ -112,21 +142,20 @@ class SetAsideAndAssetsTest extends TestCase
         $this->assertSame('0.00', app(SpendingReportService::class)->spendableCash());
     }
 
-    public function test_the_dashboard_separates_available_money_from_set_aside_money(): void
+    public function test_the_dashboard_never_shows_set_aside_money(): void
     {
         $this->account('Everyday', '50000');
         $this->account('Emergency fund', '225000', setAside: true);
 
         $this->get('/')
             ->assertOk()
-            // Available to spend is the everyday account alone...
             ->assertSee('50,000.00')
-            // ...while net worth still counts everything they own.
-            ->assertSee('2,75,000.00');
+            // The emergency fund's balance appears nowhere on the dashboard.
+            ->assertDontSee('2,25,000.00')
+            ->assertDontSee('2,75,000.00');
 
-        // The two figures come from different definitions, and that is the point.
         $this->assertSame('50000.00', app(SpendingReportService::class)->spendableCash());
-        $this->assertSame('275000.00', app(NetWorthService::class)->summary()['net_worth']);
+        $this->assertSame('50000.00', app(NetWorthService::class)->summary()['net_worth']);
     }
 
     // -----------------------------------------------------------------

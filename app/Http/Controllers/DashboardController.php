@@ -44,7 +44,7 @@ class DashboardController extends Controller
             'byPlanned' => $this->reports->groupedBy('planned_status', $start, $end),
             'byPayer' => $this->reports->groupedBy('payer_id', $start, $end),
 
-            'accounts' => Account::query()->active()->orderBy('type')->orderBy('name')->get(),
+            'accounts' => Account::query()->active()->counted()->orderBy('type')->orderBy('name')->get(),
 
             // Card bills coming due are the household's most immediate
             // commitment, so they sit on the dashboard rather than behind a tab.

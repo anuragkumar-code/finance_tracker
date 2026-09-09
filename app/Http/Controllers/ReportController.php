@@ -82,7 +82,7 @@ class ReportController extends Controller
     {
         return view('reports.net-worth', [
             'summary' => $this->netWorth->summary(),
-            'accounts' => \App\Models\Account::query()->active()->with('owner')
+            'accounts' => \App\Models\Account::query()->active()->counted()->with('owner')
                 ->orderBy('type')->orderBy('name')->get(),
             'assets' => \App\Models\Asset::query()->active()->with('linkedLoan')->orderBy('name')->get(),
             'loans' => Loan::query()->active()->with('owner')->orderBy('name')->get(),
