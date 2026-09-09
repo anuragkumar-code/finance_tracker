@@ -151,6 +151,62 @@
     </div>
 </div>
 
+{{-- How it was bought, not what was bought. Quick-commerce spending hides
+     inside category totals otherwise. --}}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>How you bought it</span>
+        <span class="small text-body-secondary">
+            online &amp; delivery: <span class="money">@inr($online['total_online'])</span>
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-sm-4">
+                <div class="stat-label">Quick commerce</div>
+                <div class="h5 mb-0 money">@inr($online['quick_commerce'])</div>
+                <div class="small text-body-secondary">Blinkit, Zepto, Instamart</div>
+            </div>
+            <div class="col-sm-4">
+                <div class="stat-label">Online shopping</div>
+                <div class="h5 mb-0 money">@inr($online['ecommerce'])</div>
+                <div class="small text-body-secondary">Amazon, Flipkart, Myntra</div>
+            </div>
+            <div class="col-sm-4">
+                <div class="stat-label">Food delivery</div>
+                <div class="h5 mb-0 money">@inr($online['food_delivery'])</div>
+                <div class="small text-body-secondary">Swiggy, Zomato</div>
+            </div>
+        </div>
+
+        @if ($byChannel->isNotEmpty())
+            <table class="table table-sm mb-0">
+                <tbody>
+                @foreach ($byChannel as $row)
+                    @php($share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0)
+                    <tr>
+                        <td>
+                            <span class="badge text-bg-{{ $row->badge }}">{{ $row->label }}</span>
+                            @if ($row->hint)
+                                <div class="small text-body-secondary">{{ $row->hint }}</div>
+                            @endif
+                        </td>
+                        <td class="text-end text-body-secondary small">{{ $row->count }} entries</td>
+                        <td class="text-end money">@inr($row->amount)</td>
+                        <td class="text-end text-body-secondary small" style="width:3.2rem;">{{ $share }}%</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+    <div class="card-footer bg-white small text-body-secondary">
+        Channels come from the merchant. Well-known names classify themselves; the rest
+        default to "in person" and can be corrected under
+        <a href="{{ route('settings.merchants.index') }}">Settings &rarr; Merchants</a>.
+    </div>
+</div>
+
 <div class="row g-3 mb-3">
     {{-- Sections 19D and 19E: who paid, and who it was for. --}}
     <div class="col-lg-6">

@@ -23,6 +23,7 @@
                         <tr class="{{ $merchant->is_active ? '' : 'opacity-50' }}">
                             <td class="fw-medium">{{ $merchant->name }}</td>
                             <td class="small text-body-secondary">
+                                <span class="badge text-bg-{{ $merchant->channel->badgeClass() }}">{{ $merchant->channel->label() }}</span>
                                 {{ $merchant->defaultCategory?->name ?: 'No category' }}
                                 @if ($merchant->defaultAccount) · {{ $merchant->defaultAccount->name }} @endif
                                 @if ($merchant->defaultBeneficiary) · for {{ $merchant->defaultBeneficiary->name }} @endif
@@ -40,6 +41,17 @@
                                     <div class="col-md-3">
                                         <label class="form-label small mb-1">Name</label>
                                         <input type="text" name="name" value="{{ $merchant->name }}" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-1">How you buy</label>
+                                        <select name="channel" class="form-select form-select-sm">
+                                            @foreach ($channels as $channel)
+                                                <option value="{{ $channel->value }}"
+                                                        @selected($merchant->channel === $channel)>
+                                                    {{ $channel->label() }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label small mb-1">Category</label>
@@ -108,6 +120,19 @@
                 <div class="mb-3">
                     <label for="m_name" class="form-label">Name</label>
                     <input type="text" name="name" id="m_name" class="form-control" required placeholder="Amazon">
+                </div>
+                <div class="mb-3">
+                    <label for="m_channel" class="form-label">How you buy from them</label>
+                    <select name="channel" id="m_channel" class="form-select">
+                        @foreach ($channels as $channel)
+                            <option value="{{ $channel->value }}" @selected($channel->value === 'offline')>
+                                {{ $channel->label() }} — {{ $channel->hint() }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="form-text">
+                        Drives the quick-commerce and online-shopping figures in reports.
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="m_cat" class="form-label">Usual category</label>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MerchantChannel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,7 @@ class Merchant extends Model
 
     protected $fillable = [
         'name',
+        'channel',
         'default_category_id',
         'default_subcategory_id',
         'default_account_id',
@@ -26,6 +28,7 @@ class Merchant extends Model
     {
         return [
             'is_active' => 'boolean',
+            'channel' => MerchantChannel::class,
         ];
     }
 
@@ -77,5 +80,27 @@ class Merchant extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+    /**
+     * Fill in a channel from the merchant's name when none was chosen.
+     *
+     * Only ever fills a blank the household left: a channel set deliberately in
+     * Settings is never second-guessed by pattern matching.
+     */
+    public function guessChannelIfUnset(): void
+    {
+        if ($this->channel === null || $this->channel === MerchantChannel::Offline) {
+            $guess = MerchantChannel::guessFrom($this->name);
+
+            if ($guess !== MerchantChannel::Offline) {
+                $this->channel = $guess;
+                $this->save();
+            }
+        }
+    }
+
+    public function scopeOfChannel(Builder $query, MerchantChannel $channel): Builder
+    {
+        return $query->where('channel', $channel->value);
     }
 }

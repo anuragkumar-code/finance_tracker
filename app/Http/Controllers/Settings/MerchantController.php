@@ -22,6 +22,7 @@ class MerchantController extends Controller
                 ->orderBy('name')
                 ->get(),
             'categories' => Category::query()->active()->ordered()->get(),
+            'channels' => \App\Enums\MerchantChannel::cases(),
             'accounts' => Account::query()->active()->orderBy('name')->get(),
             'payers' => Person::query()->active()->payers()->ordered()->get(),
             'beneficiaries' => Person::query()->active()->beneficiaries()->ordered()->get(),
@@ -59,6 +60,7 @@ class MerchantController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:150', 'unique:merchants,name'.($merchant ? ','.$merchant->id : '')],
+            'channel' => ['nullable', new \Illuminate\Validation\Rules\Enum(\App\Enums\MerchantChannel::class)],
             'default_category_id' => ['nullable', 'exists:categories,id'],
             'default_subcategory_id' => ['nullable', 'exists:categories,id'],
             'default_account_id' => ['nullable', 'exists:accounts,id'],

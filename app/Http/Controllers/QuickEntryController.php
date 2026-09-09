@@ -70,7 +70,13 @@ class QuickEntryController extends Controller
             return null;
         }
 
-        return Merchant::firstOrCreate(['name' => $name])->id;
+        $merchant = Merchant::firstOrCreate(['name' => $name]);
+
+        // Blinkit typed into the box should classify itself; the household
+        // should not have to remember what a channel is mid-entry.
+        $merchant->guessChannelIfUnset();
+
+        return $merchant->id;
     }
 
     /**
@@ -98,7 +104,14 @@ class QuickEntryController extends Controller
     private function formData(): array
     {
         return [
-            'accounts' => Account::query()->active()->with('owner')->orderBy('name')->get(),
+            // Seventeen accounts in one flat row is unusable. They are split by
+            // kind, and the handful actually used recently is surfaced first —
+            // most entries come from the same three or four places.
+            'recentAccounts' => $this->recentlyUsedAccounts(),
+            'bankAccounts' => Account::query()->active()->counted()->with('owner')
+                ->whereIn('type', ['bank', 'cash'])->orderBy('name')->get(),
+            'cardAccounts' => Account::query()->active()->counted()->with('owner')
+                ->where('type', 'credit_card')->orderBy('name')->get(),
             'categories' => Category::query()->active()->forExpenses()->topLevel()->ordered()->with('children')->get(),
             'payers' => Person::query()->active()->payers()->ordered()->get(),
             'beneficiaries' => Person::query()->active()->beneficiaries()->ordered()->get(),
@@ -106,5 +119,34 @@ class QuickEntryController extends Controller
             'plannedStatuses' => PlannedStatus::cases(),
             'purposes' => Purpose::cases(),
         ];
+    }
+    /**
+     * The accounts this household actually reaches for.
+     *
+     * Ordered by how often they have been used lately, so the common case is
+     * one tap rather than a hunt through seventeen chips.
+     *
+     * @return \Illuminate\Support\Collection<int, Account>
+     */
+    private function recentlyUsedAccounts(int $limit = 5): \Illuminate\Support\Collection
+    {
+        $ids = \App\Models\Transaction::query()
+            ->spending()
+            ->where('transaction_date', '>=', now()->subDays(60))
+            ->selectRaw('account_id, COUNT(*) AS uses')
+            ->groupBy('account_id')
+            ->orderByDesc('uses')
+            ->limit($limit)
+            ->pluck('account_id');
+
+        if ($ids->isEmpty()) {
+            return collect();
+        }
+
+        return Account::query()->active()->counted()->with('owner')
+            ->whereIn('id', $ids)
+            ->get()
+            ->sortBy(fn (Account $a) => $ids->search($a->id))
+            ->values();
     }
 }

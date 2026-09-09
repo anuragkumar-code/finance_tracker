@@ -105,7 +105,9 @@ class Transaction extends Model
 
     public function tags(): BelongsToMany
     {
-        return $this->belongsToMany(Tag::class);
+        // Pivot named explicitly: Laravel would infer "tag_transaction" from
+        // alphabetical order, but the table is transaction_tag.
+        return $this->belongsToMany(Tag::class, 'transaction_tag', 'transaction_id', 'tag_id');
     }
 
     /** The other side of a transfer or liability payment, if this is one leg of a pair. */

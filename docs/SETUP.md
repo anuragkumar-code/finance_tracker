@@ -182,3 +182,21 @@ this machine — nothing is sent anywhere. Voided entries are included and flagg
 so the file reconciles against the app it came from, and set-aside accounts
 appear in the account export even though they are hidden in the UI: a backup
 that omitted them would not restore your real position.
+
+## Quick commerce vs online shopping
+
+Merchants carry a **channel** — how you buy from them, as opposed to what you
+buy. A Blinkit order and a supermarket run are both "Food", but one is a
+ten-minute habit that is easy to repeat without noticing, and it disappears
+inside category totals otherwise.
+
+Well-known names classify themselves as you type: Blinkit, Zepto and Instamart
+become quick commerce; Amazon, Flipkart and Myntra become online shopping;
+Swiggy and Zomato become food delivery. "Amazon Now" is read as quick commerce
+even though plain "Amazon" is not. Anything unrecognised defaults to "in person"
+and can be corrected under Settings → Merchants — a channel you set by hand is
+never overwritten by the guesser.
+
+The Reports page then shows a "How you bought it" section with the three online
+figures broken out. The channel rows always add up to total spending, including
+entries with no merchant recorded.

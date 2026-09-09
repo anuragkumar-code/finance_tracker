@@ -141,8 +141,65 @@ class SpendingReportService
         ]);
     }
 
-    /** Money the household can actually reach right now: bank + cash, minus anything set aside. */
-    public function spendableCash(): string
+    /**
+     * Spending grouped by how it was bought, not what was bought.
+     *
+     * Quick-commerce spending hides inside category totals: a Blinkit order and
+     * a supermarket run both land in "Food", but one is a ten-minute habit that
+     * is easy to repeat without noticing. This is the cut that surfaces it.
+     *
+     * Spending with no merchant recorded is reported as "Not recorded" rather
+     * than dropped, so the channel rows still add up to total spending.
+     *
+     * @return Collection<int, object{label: string, key: ?string, amount: string, count: int}>
+     */
+    public function byChannel(string $start, string $end): Collection
+    {
+        $rows = Transaction::query()
+            ->spending()
+            ->inPeriod($start, $end)
+            ->leftJoin('merchants', 'merchants.id', '=', 'transactions.merchant_id')
+            ->selectRaw('merchants.channel AS channel, SUM(transactions.amount) AS amount, COUNT(*) AS entries')
+            ->groupBy('merchants.channel')
+            ->orderByDesc('amount')
+            ->get();
+
+        return $rows->map(function ($row) {
+            $channel = $row->channel !== null
+                ? \App\Enums\MerchantChannel::tryFrom($row->channel)
+                : null;
+
+            return (object) [
+                'key' => $channel?->value,
+                'label' => $channel?->label() ?? 'No merchant recorded',
+                'hint' => $channel?->hint(),
+                'badge' => $channel?->badgeClass() ?? 'light',
+                'amount' => $this->decimal($row->amount),
+                'count' => (int) $row->entries,
+            ];
+        });
+    }
+
+    /** What went through quick commerce and online shopping in a period. */
+    public function onlineSpending(string $start, string $end): array
+    {
+        $byChannel = $this->byChannel($start, $end)->keyBy('key');
+
+        $of = fn (string $key) => $byChannel->get($key)->amount ?? '0.00';
+
+        $quick = $of(\App\Enums\MerchantChannel::QuickCommerce->value);
+        $ecom = $of(\App\Enums\MerchantChannel::Ecommerce->value);
+        $food = $of(\App\Enums\MerchantChannel::FoodDelivery->value);
+
+        return [
+            'quick_commerce' => $quick,
+            'ecommerce' => $ecom,
+            'food_delivery' => $food,
+            'total_online' => bcadd(bcadd($quick, $ecom, self::SCALE), $food, self::SCALE),
+        ];
+    }
+
+    /** Money the household can actually reach right now: bank + cash, minus anything set aside. */    public function spendableCash(): string
     {
         return $this->decimal(Account::query()->active()->spendableCash()->sum('cached_balance'));
     }

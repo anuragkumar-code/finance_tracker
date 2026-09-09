@@ -61,6 +61,8 @@ class ReportController extends Controller
             'byAccount' => $this->reports->groupedBy('account_id', $start, $end),
             'byPlanned' => $this->reports->groupedBy('planned_status', $start, $end),
             'byPurpose' => $this->reports->groupedBy('purpose', $start, $end),
+            'byChannel' => $this->reports->byChannel($start, $end),
+            'online' => $this->reports->onlineSpending($start, $end),
         ]);
     }
 

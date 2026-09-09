@@ -3,37 +3,61 @@
 namespace App\Enums;
 
 /**
- * Why the money was spent (spec section 6) — orthogonal to category.
+ * Why the money went out — the "was this worth it?" axis (spec section 6).
  *
- * Category says what was bought; purpose says what role it played in the
- * household's finances.
+ * Deliberately short. The original list (necessity / lifestyle / discretionary /
+ * emergency / family / investment / debt) was seven overlapping options and the
+ * household stopped filling it in, which is worse than a blunter list they
+ * actually use. "Lifestyle" and "discretionary" meant the same thing in
+ * practice, and "emergency" duplicated the planned-status field.
+ *
+ * What is left answers one question: could we have skipped this?
  */
 enum Purpose: string
 {
-    case Necessity = 'necessity';
-    case Lifestyle = 'lifestyle';
+    case Need = 'need';
+    case Want = 'want';
     case Family = 'family';
     case Investment = 'investment';
     case Debt = 'debt';
-    case Emergency = 'emergency';
-    case Discretionary = 'discretionary';
 
     public function label(): string
     {
         return match ($this) {
-            self::Necessity => 'Necessity',
-            self::Lifestyle => 'Lifestyle',
-            self::Family => 'Family',
+            self::Need => 'Needed it',
+            self::Want => 'Wanted it',
+            self::Family => 'For family',
             self::Investment => 'Investment',
-            self::Debt => 'Debt',
-            self::Emergency => 'Emergency',
-            self::Discretionary => 'Discretionary',
+            self::Debt => 'Loan / EMI',
         };
     }
 
-    /** Purposes that roll up into the dashboard's "Essentials" figure. */
+    /** One line of plain English, shown under the picker. */
+    public function hint(): string
+    {
+        return match ($this) {
+            self::Need => 'Rent, bills, groceries, medicine',
+            self::Want => 'Eating out, gadgets, treats',
+            self::Family => 'Parents, gifts, family support',
+            self::Investment => 'Savings, SIP, buying an asset',
+            self::Debt => 'EMI or paying down a loan',
+        };
+    }
+
+    public function badgeClass(): string
+    {
+        return match ($this) {
+            self::Need => 'primary',
+            self::Want => 'warning',
+            self::Family => 'info',
+            self::Investment => 'success',
+            self::Debt => 'secondary',
+        };
+    }
+
+    /** Spending the household could not realistically have avoided. */
     public function isEssential(): bool
     {
-        return in_array($this, [self::Necessity, self::Debt], true);
+        return in_array($this, [self::Need, self::Debt], true);
     }
 }
