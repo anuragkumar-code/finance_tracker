@@ -6,8 +6,10 @@ use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\CreditCardPaymentController;
 use App\Http\Controllers\CreditCardStatementController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExportController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\QuickEntryController;
+use App\Http\Controllers\ReconciliationController;
 use App\Http\Controllers\RecurringTransactionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UpcomingController;
@@ -94,6 +96,20 @@ Route::get('/reports', [ReportController::class, 'index'])->name('reports.index'
 Route::get('/reports/trends', [ReportController::class, 'trends'])->name('reports.trends');
 Route::get('/reports/net-worth', [ReportController::class, 'netWorth'])->name('reports.net-worth');
 Route::get('/reports/credit-cards', [ReportController::class, 'creditCards'])->name('reports.credit-cards');
+
+/*
+ * Reconciliation (spec section 18). The app never edits a calculated balance to
+ * match the bank; a gap is closed only by a visible adjustment the household
+ * confirms, so every balance stays explainable by its ledger.
+ */
+Route::get('/reconcile', [ReconciliationController::class, 'index'])->name('reconciliations.index');
+Route::post('/reconcile', [ReconciliationController::class, 'store'])->name('reconciliations.store');
+Route::post('/reconcile/{reconciliation}/adjust', [ReconciliationController::class, 'adjust'])
+    ->name('reconciliations.adjust');
+
+// Backup and spreadsheet export (spec section 31) — local files, no third party.
+Route::get('/export/transactions.csv', [ExportController::class, 'transactions'])->name('export.transactions');
+Route::get('/export/accounts.csv', [ExportController::class, 'accounts'])->name('export.accounts');
 
 // Things owned outside accounts — land, vehicles.
 Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');

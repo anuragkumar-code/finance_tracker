@@ -198,6 +198,10 @@
                     <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}"
                        href="{{ route('reports.index') }}">Reports</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('reconciliations.*') ? 'active' : '' }}"
+                       href="{{ route('reconciliations.index') }}">Reconcile</a>
+                </li>
 
                 <li class="nav-section">Settings</li>
                 <li class="nav-item">

@@ -160,3 +160,25 @@ picture as a complete one.
 - **Net worth** — the balance sheet: accounts and assets against cards and loans.
 - **Card report** — purchases and bill payments shown as separate columns, never
   added together.
+
+## Reconciliation and export (Phase 5)
+
+**Reconcile** compares what the app calculated against what your bank or card
+actually shows. Pick an account, type in the real balance, and it tells you
+whether the two agree.
+
+When they do not, the app records the gap and **does not change its own
+balance**. That is deliberate: a balance you can trace back to real entries is
+worth more than one that always looks right. A gap almost always means an entry
+was missed, so look for that first.
+
+If you genuinely need to close a gap, "Adjust" posts a visible adjustment
+transaction with your stated reason. It appears in the account history like any
+other entry and is never counted as spending. The recorded difference stays
+fixed at what it was on the day you checked, even as later entries arrive.
+
+**Export** writes CSVs of your transactions and account balances. They stay on
+this machine — nothing is sent anywhere. Voided entries are included and flagged
+so the file reconciles against the app it came from, and set-aside accounts
+appear in the account export even though they are hidden in the UI: a backup
+that omitted them would not restore your real position.
