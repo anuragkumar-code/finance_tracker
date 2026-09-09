@@ -81,6 +81,49 @@
     </div>
 </div>
 
+@if ($budgetAlerts->isNotEmpty() || $spendingAnomalies->isNotEmpty())
+    {{-- Only what needs attention. A full budget table lives on its own page;
+         the dashboard should not nag about categories that are fine. --}}
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <span>Worth a look</span>
+            <a href="{{ route('budgets.index') }}" class="small text-decoration-none">Budgets</a>
+        </div>
+        <div class="card-body">
+            @foreach ($budgetAlerts as $alert)
+                <div class="d-flex justify-content-between align-items-baseline mb-2">
+                    <div>
+                        <span class="fw-medium">{{ $alert->category?->name ?? 'Uncategorised' }}</span>
+                        @if ($alert->status === 'over')
+                            <span class="badge text-bg-danger">over budget</span>
+                        @else
+                            <span class="badge text-bg-warning">spending fast</span>
+                        @endif
+                        <div class="small text-body-secondary">
+                            {{ $alert->used_percent }}% of budget used,
+                            {{ $alert->month_elapsed_percent }}% of the month gone
+                        </div>
+                    </div>
+                    <div class="money">@inr($alert->spent) <span class="text-body-secondary">/ @inr($alert->budget)</span></div>
+                </div>
+            @endforeach
+
+            @foreach ($spendingAnomalies as $a)
+                <div class="d-flex justify-content-between align-items-baseline mb-2">
+                    <div>
+                        <span class="fw-medium">{{ $a->category?->name ?? 'Uncategorised' }}</span>
+                        <span class="badge text-bg-secondary">{{ $a->ratio }}× usual</span>
+                        <div class="small text-body-secondary">
+                            normally around @inr($a->usual) a month
+                        </div>
+                    </div>
+                    <div class="money">@inr($a->spent)</div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+@endif
+
 @if ($obligations->isNotEmpty())
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">

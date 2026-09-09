@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AssetController;
+use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\CreditCardPaymentController;
 use App\Http\Controllers\CreditCardStatementController;
@@ -96,6 +97,16 @@ Route::get('/reports', [ReportController::class, 'index'])->name('reports.index'
 Route::get('/reports/trends', [ReportController::class, 'trends'])->name('reports.trends');
 Route::get('/reports/net-worth', [ReportController::class, 'netWorth'])->name('reports.net-worth');
 Route::get('/reports/credit-cards', [ReportController::class, 'creditCards'])->name('reports.credit-cards');
+
+/*
+ * Budgets (spec section 22). Deliberately the last feature built: a target set
+ * before you know your own habits is just a number to feel bad about. The app
+ * will not SUGGEST an amount until it has months of real spending to base one on.
+ */
+Route::get('/budgets', [BudgetController::class, 'index'])->name('budgets.index');
+Route::post('/budgets', [BudgetController::class, 'store'])->name('budgets.store');
+Route::delete('/budgets/{category}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
+Route::get('/budgets/{category}/suggestion', [BudgetController::class, 'suggest'])->name('budgets.suggest');
 
 /*
  * Reconciliation (spec section 18). The app never edits a calculated balance to

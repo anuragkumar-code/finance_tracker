@@ -20,6 +20,7 @@ class DashboardController extends Controller
         private readonly UpcomingObligationsService $upcoming,
         private readonly LoanService $loans,
         private readonly \App\Services\Reporting\NetWorthService $netWorth,
+        private readonly \App\Services\Reporting\BudgetService $budgets,
     ) {}
 
     public function index(Request $request): View
@@ -61,6 +62,13 @@ class DashboardController extends Controller
             // EMIs are counted inside "spent" by household choice, so the
             // debt-repayment portion is shown alongside it rather than hidden.
             'debtRepaid' => $this->loans->paidBetween($start, $end),
+
+            // Only the budgets actually in trouble; a full list belongs on its
+            // own page rather than crowding the daily view.
+            'budgetAlerts' => $this->budgets->comparison($month)
+                ->filter(fn ($r) => in_array($r->status, ['over', 'ahead_of_pace'], true))
+                ->take(4),
+            'spendingAnomalies' => $this->budgets->anomalies($month)->take(3),
 
             'recent' => Transaction::query()
                 ->with(['account', 'category', 'merchant', 'payer', 'beneficiary'])

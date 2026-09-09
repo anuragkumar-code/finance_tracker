@@ -200,3 +200,32 @@ never overwritten by the guesser.
 The Reports page then shows a "How you bought it" section with the three online
 figures broken out. The channel rows always add up to total spending, including
 entries with no merchant recorded.
+
+## Budgets (Phase 6)
+
+Built last on purpose. Spec section 22 warns against imposing budgets before you
+understand your own behaviour, so the app **will not suggest an amount** until it
+has about three months of spending in a category. It says so plainly instead of
+inventing a number. Setting a budget by hand is always allowed — you already know
+what your rent is.
+
+Budgets are **dated**. Raising the food budget in March does not rewrite how
+February was judged: each month is measured against the target that was actually
+in force at the time.
+
+The comparison shows "% of budget used" next to "% of the month gone", because
+70% spent on the 5th means something very different from the same figure on the
+25th. A category running well ahead of the calendar is flagged as "spending
+fast" before it goes over.
+
+Categories with **no** budget still appear with their spending, so an unbudgeted
+category quietly eating money cannot hide by never having had a target.
+
+**Anomalies** compare a category against its own recent average rather than a
+fixed threshold, so a household that always spends heavily on rent is not warned
+about rent every month. Nothing is flagged until there is history to call it
+unusual against.
+
+Transfers, card bill payments and money moved to a set-aside account are not
+spending and never count against a budget. Loan EMIs do, because this household
+chose to count them as spending.
