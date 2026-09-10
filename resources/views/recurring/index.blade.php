@@ -2,299 +2,229 @@
 
 @section('title', 'Recurring')
 @section('heading', 'Recurring commitments')
-@section('subheading', 'Rent, bills, subscriptions, family support — expected, not assumed')
+@section('subheading', 'Rent, bills, subscriptions, family support — expected, never assumed')
 
 @section('content')
-<div class="row g-3">
-    <div class="col-lg-7">
+<div class="grid gap-4 lg:grid-cols-12">
+    <div class="space-y-4 lg:col-span-7">
 
         @if ($due->isNotEmpty())
-            <div class="card mb-3">
-                <div class="card-header">Due now and soon</div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead>
-                            <tr>
-                                <th>Due</th>
-                                <th>What</th>
-                                <th class="text-end">Expected</th>
-                                <th class="text-end">Did it happen?</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+            <x-ui.card>
+                <x-ui.card-header title="Due now and soon"
+                    description="Nothing is recorded until you confirm it" />
+                <x-ui.card-content flush>
+                    <ul class="divide-y divide-border">
                         @foreach ($due as $occurrence)
-                            <tr class="{{ $occurrence->isOverdue() ? 'table-warning' : '' }}">
-                                <td class="text-nowrap">
-                                    {{ $occurrence->due_date->format('d M') }}
+                            <li class="flex flex-wrap items-center gap-3 px-5 py-3
+                                       {{ $occurrence->isOverdue() ? 'bg-warning/[0.07]' : '' }}">
+                                <div class="w-14 shrink-0">
+                                    <p class="text-sm font-medium tabular">{{ $occurrence->due_date->format('d M') }}</p>
                                     @if ($occurrence->isOverdue())
-                                        <div class="small text-danger">overdue</div>
+                                        <p class="text-xs text-destructive">overdue</p>
                                     @endif
-                                </td>
-                                <td>
-                                    {{ $occurrence->recurringTransaction->name }}
-                                    <div class="small text-body-secondary">
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium">{{ $occurrence->recurringTransaction->name }}</p>
+                                    <p class="truncate text-xs text-muted-foreground">
                                         {{ $occurrence->recurringTransaction->account->name }}
-                                    </div>
-                                </td>
-                                <td class="text-end money">@inr($occurrence->amount)</td>
-                                <td class="text-end">
-                                    <div class="d-flex gap-1 justify-content-end">
-                                        <button class="btn btn-sm btn-outline-primary"
-                                                data-bs-toggle="modal" data-bs-target="#confirm{{ $occurrence->id }}">
-                                            Confirm
-                                        </button>
-                                        <form method="POST"
-                                              action="{{ route('recurring.occurrences.skip', $occurrence) }}">
-                                            @csrf
-                                            <button class="btn btn-sm btn-outline-secondary">Skip</button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
+                                    </p>
+                                </div>
+                                <x-finance.money :amount="$occurrence->amount" tone="strong" class="text-sm" />
+                                <div class="flex shrink-0 gap-1.5">
+                                    <x-ui.button variant="outline" size="sm"
+                                        x-on:click="$dispatch('open-dialog', 'confirm-{{ $occurrence->id }}')">
+                                        Confirm
+                                    </x-ui.button>
+                                    <form method="POST" action="{{ route('recurring.occurrences.skip', $occurrence) }}">
+                                        @csrf
+                                        <x-ui.button type="submit" variant="ghost" size="sm">Skip</x-ui.button>
+                                    </form>
+                                </div>
+                            </li>
                         @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                <div class="card-footer bg-white small text-body-secondary">
-                    Nothing is recorded until you confirm it — the app never assumes a payment went out.
-                </div>
-            </div>
+                    </ul>
+                </x-ui.card-content>
+                <x-ui.card-footer>
+                    The app never assumes a payment went out — each date waits here until you say
+                    it happened.
+                </x-ui.card-footer>
+            </x-ui.card>
         @endif
 
-        <div class="card">
-            <div class="card-header">All commitments</div>
-            <div class="card-body p-0">
+        <x-ui.card>
+            <x-ui.card-header title="All commitments" />
+            <x-ui.card-content flush>
                 @forelse ($commitments as $commitment)
-                    <div class="border-bottom p-3 {{ $commitment->is_active ? '' : 'opacity-50' }}">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <span class="fw-medium">{{ $commitment->name }}</span>
-                                @unless ($commitment->is_active)
-                                    <span class="badge text-bg-secondary">stopped</span>
-                                @endunless
-                                <div class="small text-body-secondary">
-                                    {{ $commitment->frequency->label() }} ·
-                                    {{ $commitment->account->name }}
-                                    @if ($commitment->category) · {{ $commitment->category->name }} @endif
+                    <div x-data="{ editing: false }"
+                         class="border-b border-border last:border-0 {{ $commitment->is_active ? '' : 'opacity-60' }}">
+                        <div class="flex items-start justify-between gap-3 px-5 py-3">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="text-sm font-medium">{{ $commitment->name }}</span>
+                                    <x-ui.badge variant="secondary">{{ $commitment->frequency->label() }}</x-ui.badge>
+                                    @unless ($commitment->is_active)
+                                        <x-ui.badge variant="outline">Stopped</x-ui.badge>
+                                    @endunless
                                 </div>
-                                <div class="small text-body-secondary">
-                                    next {{ $commitment->next_due_date->format('d M Y') }}
-                                </div>
+                                <p class="mt-0.5 text-xs text-muted-foreground">
+                                    {{ $commitment->account->name }}@if ($commitment->category) · {{ $commitment->category->name }} @endif
+                                    · next {{ $commitment->next_due_date->format('d M Y') }}
+                                </p>
                             </div>
-                            <div class="text-end">
-                                <div class="money fw-semibold">@inr($commitment->amount)</div>
-                                <button class="btn btn-sm btn-link text-decoration-none p-0"
-                                        data-bs-toggle="collapse" data-bs-target="#edit{{ $commitment->id }}">
+                            <div class="shrink-0 text-right">
+                                <x-finance.money :amount="$commitment->amount" tone="strong" class="text-sm" />
+                                <button type="button" x-on:click="editing = !editing"
+                                        class="mt-0.5 block text-xs text-muted-foreground hover:text-foreground">
                                     Edit
                                 </button>
                             </div>
                         </div>
 
-                        <div class="collapse mt-3" id="edit{{ $commitment->id }}">
+                        <div x-show="editing" x-cloak class="border-t border-border bg-muted/40 px-5 py-4">
                             <form method="POST" action="{{ route('recurring.update', $commitment) }}"
-                                  class="row g-2 border-top pt-3">
+                                  class="grid gap-3 sm:grid-cols-2">
                                 @csrf @method('PUT')
-                                <div class="col-md-4">
-                                    <label class="form-label small mb-1">Name</label>
-                                    <input type="text" name="name" value="{{ $commitment->name }}"
-                                           class="form-control form-control-sm" required>
+                                <x-ui.input label="Name" name="name" :value="$commitment->name" required />
+                                <x-ui.input label="Amount" name="amount" inputmode="decimal" prefix="₹"
+                                    :value="$commitment->amount" required />
+
+                                <x-ui.select label="How often" name="frequency">
+                                    @foreach ($frequencies as $frequency)
+                                        <option value="{{ $frequency->value }}" @selected($commitment->frequency === $frequency)>
+                                            {{ $frequency->label() }}
+                                        </option>
+                                    @endforeach
+                                </x-ui.select>
+
+                                <x-ui.input label="Next due" name="next_due_date" type="date"
+                                    :value="$commitment->next_due_date->toDateString()" required />
+
+                                <x-ui.select label="Account" name="account_id" required>
+                                    @foreach ($accounts as $account)
+                                        <option value="{{ $account->id }}" @selected($commitment->account_id == $account->id)>
+                                            {{ $account->name }}
+                                        </option>
+                                    @endforeach
+                                </x-ui.select>
+
+                                <x-ui.select label="Category" name="category_id">
+                                    <option value="">—</option>
+                                    @foreach ($categories as $category)
+                                        <option value="{{ $category->id }}" @selected($commitment->category_id == $category->id)>
+                                            {{ $category->full_name }}
+                                        </option>
+                                    @endforeach
+                                </x-ui.select>
+
+                                <x-ui.select label="Type" name="type">
+                                    <option value="expense" @selected($commitment->type->value === 'expense')>Money out</option>
+                                    <option value="income" @selected($commitment->type->value === 'income')>Money in</option>
+                                </x-ui.select>
+
+                                <div class="flex items-end gap-2">
+                                    <x-ui.checkbox name="is_active" :checked="$commitment->is_active" label="Active" />
                                 </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small mb-1">Amount</label>
-                                    <input type="text" name="amount" value="{{ $commitment->amount }}"
-                                           class="form-control form-control-sm money" required>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small mb-1">How often</label>
-                                    <select name="frequency" class="form-select form-select-sm">
-                                        @foreach ($frequencies as $frequency)
-                                            <option value="{{ $frequency->value }}"
-                                                    @selected($commitment->frequency === $frequency)>
-                                                {{ $frequency->label() }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small mb-1">Next due</label>
-                                    <input type="date" name="next_due_date"
-                                           value="{{ $commitment->next_due_date->toDateString() }}"
-                                           class="form-control form-control-sm" required>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small mb-1">Account</label>
-                                    <select name="account_id" class="form-select form-select-sm" required>
-                                        @foreach ($accounts as $account)
-                                            <option value="{{ $account->id }}"
-                                                    @selected($commitment->account_id == $account->id)>
-                                                {{ $account->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small mb-1">Category</label>
-                                    <select name="category_id" class="form-select form-select-sm">
-                                        <option value="">—</option>
-                                        @foreach ($categories as $category)
-                                            <option value="{{ $category->id }}"
-                                                    @selected($commitment->category_id == $category->id)>
-                                                {{ $category->full_name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small mb-1">Type</label>
-                                    <select name="type" class="form-select form-select-sm">
-                                        <option value="expense" @selected($commitment->type->value === 'expense')>Expense</option>
-                                        <option value="income" @selected($commitment->type->value === 'income')>Income</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                    <div class="form-check">
-                                        <input type="checkbox" name="is_active" value="1" class="form-check-input"
-                                               id="active{{ $commitment->id }}" @checked($commitment->is_active)>
-                                        <label class="form-check-label small" for="active{{ $commitment->id }}">Active</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end gap-1">
-                                    <button class="btn btn-sm btn-primary">Save</button>
+
+                                <div class="sm:col-span-2">
+                                    <x-ui.button type="submit" size="sm">Save</x-ui.button>
+                                    <x-ui.button type="button" variant="ghost" size="sm" x-on:click="editing = false">
+                                        Cancel
+                                    </x-ui.button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 @empty
-                    <div class="empty-state">
-                        No commitments yet. Add rent, utilities, subscriptions or regular family
-                        support so they show up in Upcoming before they hit your account.
-                    </div>
+                    <x-ui.empty-state icon="repeat" title="No commitments yet"
+                        description="Add rent, utilities, subscriptions or regular family support so they show up in Upcoming before they hit your account." />
                 @endforelse
-            </div>
-        </div>
+            </x-ui.card-content>
+        </x-ui.card>
     </div>
 
-    <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header">Add a commitment</div>
-            <form method="POST" action="{{ route('recurring.store') }}" class="card-body">
+    <div class="lg:col-span-5">
+        <x-ui.card>
+            <x-ui.card-header title="Add a commitment" />
+            <form method="POST" action="{{ route('recurring.store') }}">
                 @csrf
-                <div class="mb-3">
-                    <label for="r_name" class="form-label">What is it</label>
-                    <input type="text" name="name" id="r_name" class="form-control"
-                           placeholder="Rent" required>
-                </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label for="r_amount" class="form-label">Amount</label>
-                        <div class="input-group">
-                            <span class="input-group-text">₹</span>
-                            <input type="text" inputmode="decimal" name="amount" id="r_amount"
-                                   class="form-control money" required>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label for="r_type" class="form-label">Type</label>
-                        <select name="type" id="r_type" class="form-select">
+                <x-ui.card-content class="space-y-4">
+                    <x-ui.input label="What is it" name="name" placeholder="Rent" required />
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.input label="Amount" name="amount" inputmode="decimal" prefix="₹" required />
+                        <x-ui.select label="Type" name="type">
                             <option value="expense">Money out</option>
                             <option value="income">Money in</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label for="r_freq" class="form-label">How often</label>
-                        <select name="frequency" id="r_freq" class="form-select">
+                        </x-ui.select>
+
+                        <x-ui.select label="How often" name="frequency">
                             @foreach ($frequencies as $frequency)
                                 <option value="{{ $frequency->value }}" @selected($frequency->value === 'monthly')>
                                     {{ $frequency->label() }}
                                 </option>
                             @endforeach
-                        </select>
+                        </x-ui.select>
+                        <x-ui.input label="Next due" name="next_due_date" type="date"
+                            :value="now()->toDateString()" required />
                     </div>
-                    <div class="col-6">
-                        <label for="r_next" class="form-label">Next due</label>
-                        <input type="date" name="next_due_date" id="r_next" class="form-control"
-                               value="{{ now()->toDateString() }}" required>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="r_account" class="form-label">Account</label>
-                    <select name="account_id" id="r_account" class="form-select" required>
+
+                    <x-ui.select label="Account" name="account_id" required>
                         <option value="">Choose…</option>
                         @foreach ($accounts as $account)
                             <option value="{{ $account->id }}">{{ $account->name }}</option>
                         @endforeach
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="r_category" class="form-label">Category</label>
-                    <select name="category_id" id="r_category" class="form-select">
+                    </x-ui.select>
+
+                    <x-ui.select label="Category" name="category_id">
                         <option value="">—</option>
                         @foreach ($categories as $category)
                             <option value="{{ $category->id }}">{{ $category->full_name }}</option>
                         @endforeach
-                    </select>
-                </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label for="r_benef" class="form-label">For</label>
-                        <select name="beneficiary_id" id="r_benef" class="form-select">
+                    </x-ui.select>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.select label="For" name="beneficiary_id">
                             <option value="">—</option>
                             @foreach ($beneficiaries as $person)
                                 <option value="{{ $person->id }}">{{ $person->name }}</option>
                             @endforeach
-                        </select>
+                        </x-ui.select>
+                        <x-ui.input label="Ends" name="end_date" type="date" hint="Optional" />
                     </div>
-                    <div class="col-6">
-                        <label for="r_end" class="form-label">Ends <span class="text-body-secondary">(optional)</span></label>
-                        <input type="date" name="end_date" id="r_end" class="form-control">
-                    </div>
+                </x-ui.card-content>
+
+                <div class="border-t border-border px-5 py-3.5">
+                    <x-ui.button type="submit" class="w-full">Add commitment</x-ui.button>
                 </div>
-                <button class="btn btn-primary w-100">Add commitment</button>
             </form>
-        </div>
+        </x-ui.card>
     </div>
 </div>
 
 @foreach ($due as $occurrence)
-    <div class="modal fade" id="confirm{{ $occurrence->id }}" tabindex="-1">
-        <div class="modal-dialog">
-            <form method="POST" action="{{ route('recurring.occurrences.confirm', $occurrence) }}" class="modal-content">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm {{ $occurrence->recurringTransaction->name }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <x-ui.dialog id="confirm-{{ $occurrence->id }}"
+        :title="'Confirm '.$occurrence->recurringTransaction->name">
+        <form method="POST" action="{{ route('recurring.occurrences.confirm', $occurrence) }}">
+            @csrf
+            <div class="space-y-4 px-5 py-4">
+                <p class="text-sm text-muted-foreground">
+                    This records the real transaction against
+                    {{ $occurrence->recurringTransaction->account->name }}. Adjust the amount if the
+                    actual bill differed.
+                </p>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.input label="Actual amount" name="amount" inputmode="decimal" prefix="₹"
+                        :value="$occurrence->amount" />
+                    <x-ui.input label="Paid on" name="paid_on" type="date"
+                        :value="$occurrence->due_date->toDateString()" />
                 </div>
-                <div class="modal-body">
-                    <p class="small text-body-secondary">
-                        This records the real transaction against
-                        {{ $occurrence->recurringTransaction->account->name }}.
-                        Adjust the amount if the actual bill differed.
-                    </p>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label for="camt{{ $occurrence->id }}" class="form-label">Actual amount</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="text" inputmode="decimal" name="amount" id="camt{{ $occurrence->id }}"
-                                       class="form-control money" value="{{ $occurrence->amount }}">
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <label for="cdate{{ $occurrence->id }}" class="form-label">Paid on</label>
-                            <input type="date" name="paid_on" id="cdate{{ $occurrence->id }}" class="form-control"
-                                   value="{{ $occurrence->due_date->toDateString() }}">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button class="btn btn-primary">Record it</button>
-                </div>
-            </form>
-        </div>
-    </div>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-border px-5 py-3">
+                <x-ui.button type="button" variant="ghost"
+                    x-on:click="$dispatch('close-dialog', 'confirm-{{ $occurrence->id }}')">Cancel</x-ui.button>
+                <x-ui.button type="submit">Record it</x-ui.button>
+            </div>
+        </form>
+    </x-ui.dialog>
 @endforeach
-
 @endsection

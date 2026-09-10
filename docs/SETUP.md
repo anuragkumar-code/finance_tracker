@@ -229,3 +229,48 @@ unusual against.
 Transfers, card bill payments and money moved to a set-aside account are not
 spending and never count against a budget. Loan EMIs do, because this household
 chose to count them as spending.
+
+## The interface
+
+The UI is Tailwind CSS + Alpine.js + Blade components, with Lucide icons inlined.
+Bootstrap and jQuery have been removed entirely.
+
+### Rebuilding the stylesheet
+
+Tailwind compiles through its **standalone binary**, not Vite — Node on this
+machine is 18 and Vite 7 requires 20+. Download it once:
+
+```bash
+mkdir -p tools
+curl -L -o tools/tailwindcss.exe \
+  https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-windows-x64.exe
+```
+
+Then after editing any Blade template or `resources/css/app.css`:
+
+```bash
+./build-css.sh            # or ./build-css.sh --watch while working
+```
+
+The binary is gitignored (112MB); the compiled `public/build/app.css` is
+committed, so a fresh clone runs with no build step at all.
+
+### Design tokens
+
+Colours live as CSS custom properties in `resources/css/app.css` and are exposed
+to Tailwind as semantic names — `bg-card`, `text-muted-foreground`,
+`border-border`, plus `text-income` / `text-expense` / `text-debt` for financial
+meaning. Components never name a raw colour, so dark mode can be added later by
+redefining the variables rather than editing every template.
+
+### Components
+
+Reusable Blade primitives live in `resources/views/components/ui` (button, card,
+badge, input, select, textarea, checkbox, alert, dialog, dropdown, toast,
+progress, stat, empty-state, pagination, icon) and
+`resources/views/components/finance` (money). Money is always rendered through
+`<x-finance.money :amount="..." />` so Indian grouping and semantic colour stay
+consistent everywhere.
+
+Dialogs, dropdowns, the mobile sidebar, filters and toasts run on Alpine. Dialogs
+trap focus, close on Escape and lock background scrolling.

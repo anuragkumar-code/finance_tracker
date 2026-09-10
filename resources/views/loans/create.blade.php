@@ -5,180 +5,130 @@
 @section('subheading', 'Just the EMI, the tenure and when it started')
 
 @section('content')
-<div class="row">
-    <div class="col-lg-9 col-xl-7">
-        <form method="POST" action="{{ route('loans.store') }}">
-            @csrf
-            <div class="card">
-                <div class="card-body">
-                    <div class="alert alert-info small">
-                        No interest rate needed. The EMI and the number of months are all that is
-                        required — what you have paid, what is left and every future due date are
-                        worked out from those.
-                    </div>
+<div class="max-w-2xl">
+    <form method="POST" action="{{ route('loans.store') }}">
+        @csrf
+        <x-ui.card>
+            <x-ui.card-content class="space-y-4">
+                <x-ui.alert variant="info">
+                    No interest rate needed. The EMI and the number of months are all that is
+                    required — what you have paid, what is left and every future due date are worked
+                    out from those.
+                </x-ui.alert>
 
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="name" class="form-label">Loan name</label>
-                            <input type="text" name="name" id="name"
-                                   class="form-control @error('name') is-invalid @enderror"
-                                   value="{{ old('name') }}" placeholder="Land Loan" required autofocus>
-                            @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.input label="Loan name" name="name" :value="old('name')"
+                        placeholder="Land Loan" required autofocus />
+                    <x-ui.input label="Lender" name="lender" :value="old('lender')"
+                        placeholder="HDFC" hint="Optional" />
+                </div>
 
-                        <div class="col-md-6">
-                            <label for="lender" class="form-label">Lender <span class="text-body-secondary">(optional)</span></label>
-                            <input type="text" name="lender" id="lender" class="form-control"
-                                   value="{{ old('lender') }}" placeholder="HDFC">
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label">Whose loan</label>
-                            <div class="chip-group">
-                                @foreach ($owners as $owner)
-                                    <label class="chip">
-                                        <input type="radio" name="owner_id" value="{{ $owner->id }}"
-                                               @checked(old('owner_id') == $owner->id)>
-                                        <span>{{ $owner->name }}</span>
-                                    </label>
-                                @endforeach
-                                <label class="chip">
-                                    <input type="radio" name="owner_id" value="" @checked(old('owner_id') === null)>
-                                    <span>Not set</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label for="emi_amount" class="form-label">Monthly EMI</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="text" inputmode="decimal" name="emi_amount" id="emi_amount"
-                                       class="form-control money @error('emi_amount') is-invalid @enderror"
-                                       value="{{ old('emi_amount') }}" required>
-                                @error('emi_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label for="total_months" class="form-label">Total months</label>
-                            <input type="number" min="1" max="600" name="total_months" id="total_months"
-                                   class="form-control @error('total_months') is-invalid @enderror"
-                                   value="{{ old('total_months') }}" required>
-                            @error('total_months')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-
-                        <div class="col-md-4">
-                            <label for="due_day" class="form-label">Deducted on day</label>
-                            <input type="number" min="1" max="31" name="due_day" id="due_day"
-                                   class="form-control @error('due_day') is-invalid @enderror"
-                                   value="{{ old('due_day') }}" required>
-                            @error('due_day')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="start_date" class="form-label">Loan started</label>
-                            <input type="date" name="start_date" id="start_date"
-                                   class="form-control @error('start_date') is-invalid @enderror"
-                                   value="{{ old('start_date') }}" required>
-                            @error('start_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Ends</label>
-                            <input type="text" class="form-control" id="endPreview" value="—" readonly disabled>
-                            <div class="form-text">Worked out from the start date and tenure.</div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="payment_account_id" class="form-label">Usually paid from</label>
-                            <select name="payment_account_id" id="payment_account_id" class="form-select">
-                                <option value="">—</option>
-                                @foreach ($accounts as $account)
-                                    <option value="{{ $account->id }}" @selected(old('payment_account_id') == $account->id)>
-                                        {{ $account->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="category_id" class="form-label">File EMIs under</label>
-                            <select name="category_id" id="category_id" class="form-select">
-                                <option value="">—</option>
-                                @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>
-                                        {{ $category->full_name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input type="hidden" name="mark_past_as_paid" value="0">
-                                <input type="checkbox" name="mark_past_as_paid" id="mark_past_as_paid" value="1"
-                                       class="form-check-input" @checked(old('mark_past_as_paid', true))>
-                                <label class="form-check-label" for="mark_past_as_paid">
-                                    EMIs before today have already been paid
-                                </label>
-                            </div>
-                            <div class="form-text">
-                                Marks past instalments as paid so the loan shows the right progress.
-                                No bank entries are created for them — those payments happened before
-                                you started tracking, so inventing them would throw your balances off.
-                            </div>
-                        </div>
-
-                        <div class="col-12">
-                            <label for="notes" class="form-label">Notes <span class="text-body-secondary">(optional)</span></label>
-                            <textarea name="notes" id="notes" class="form-control" rows="2">{{ old('notes') }}</textarea>
-                        </div>
+                <div>
+                    <p class="mb-2 text-sm font-medium">Whose loan</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach ($owners as $owner)
+                            <label class="chip">
+                                <input type="radio" name="owner_id" value="{{ $owner->id }}"
+                                       @checked(old('owner_id') == $owner->id)>
+                                <span>{{ $owner->name }}</span>
+                            </label>
+                        @endforeach
+                        <label class="chip">
+                            <input type="radio" name="owner_id" value="" @checked(old('owner_id') === null)>
+                            <span>Not set</span>
+                        </label>
                     </div>
                 </div>
-                <div class="card-footer bg-white d-flex gap-2">
-                    <button class="btn btn-primary">Save loan</button>
-                    <a href="{{ route('loans.index') }}" class="btn btn-outline-secondary">Cancel</a>
+
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <x-ui.input label="Monthly EMI" name="emi_amount" inputmode="decimal" prefix="₹"
+                        :value="old('emi_amount')" required />
+                    <x-ui.input label="Total months" name="total_months" type="number" min="1" max="600"
+                        :value="old('total_months')" id="total_months" required />
+                    <x-ui.input label="Deducted on day" name="due_day" type="number" min="1" max="31"
+                        :value="old('due_day')" id="due_day" required />
                 </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.input label="Loan started" name="start_date" type="date" id="start_date"
+                        :value="old('start_date')" required />
+                    <div class="space-y-1.5">
+                        <span class="block text-sm font-medium text-foreground">Ends</span>
+                        <div class="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground"
+                             id="endPreview" aria-live="polite">—</div>
+                        <p class="text-xs text-muted-foreground">Worked out from the start date and tenure.</p>
+                    </div>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.select label="Usually paid from" name="payment_account_id">
+                        <option value="">—</option>
+                        @foreach ($accounts as $account)
+                            <option value="{{ $account->id }}" @selected(old('payment_account_id') == $account->id)>
+                                {{ $account->name }}
+                            </option>
+                        @endforeach
+                    </x-ui.select>
+
+                    <x-ui.select label="File EMIs under" name="category_id">
+                        <option value="">—</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>
+                                {{ $category->full_name }}
+                            </option>
+                        @endforeach
+                    </x-ui.select>
+                </div>
+
+                <div class="border-t border-border pt-4">
+                    <x-ui.checkbox name="mark_past_as_paid" :checked="old('mark_past_as_paid', true)"
+                        label="EMIs before today have already been paid"
+                        hint="Marks past instalments as paid so the loan shows the right progress. No bank entries are created for them — those payments happened before you started tracking, and inventing them would throw your balances off." />
+                </div>
+
+                <x-ui.textarea label="Notes" name="notes" rows="2" hint="Optional">{{ old('notes') }}</x-ui.textarea>
+            </x-ui.card-content>
+
+            <div class="flex gap-2 border-t border-border px-5 py-3.5">
+                <x-ui.button type="submit">Save loan</x-ui.button>
+                <x-ui.button :href="route('loans.index')" variant="ghost">Cancel</x-ui.button>
             </div>
-        </form>
-    </div>
+        </x-ui.card>
+    </form>
 </div>
 @endsection
 
 @push('scripts')
 <script>
-$(function () {
+(function () {
     // Show the end date as it is typed, so the tenure can be sanity-checked
-    // before saving.
-    function updateEnd() {
-        const start = $('#start_date').val();
-        const months = parseInt($('#total_months').val(), 10);
-        const day = parseInt($('#due_day').val(), 10);
+    // before anything is saved.
+    const start = document.getElementById('start_date');
+    const months = document.getElementById('total_months');
+    const day = document.getElementById('due_day');
+    const out = document.getElementById('endPreview');
 
-        if (!start || !months || !day) {
-            $('#endPreview').val('—');
-            return;
-        }
+    function update() {
+        const s = start.value, m = parseInt(months.value, 10), d = parseInt(day.value, 10);
+        if (!s || !m || !d) { out.textContent = '—'; return; }
 
-        const startDate = new Date(start + 'T00:00:00');
+        const startDate = new Date(s + 'T00:00:00');
         let first = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
 
-        // First instalment is this month if the day has not passed, else next.
-        const dayThisMonth = Math.min(day, new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate());
-        if (dayThisMonth < startDate.getDate()) {
+        const daysThisMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
+        if (Math.min(d, daysThisMonth) < startDate.getDate()) {
             first = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1);
         }
 
-        const lastMonth = new Date(first.getFullYear(), first.getMonth() + months - 1, 1);
-        const lastDay = Math.min(day, new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0).getDate());
-        const end = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), lastDay);
+        const last = new Date(first.getFullYear(), first.getMonth() + m - 1, 1);
+        const lastDay = Math.min(d, new Date(last.getFullYear(), last.getMonth() + 1, 0).getDate());
 
-        $('#endPreview').val(end.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }));
+        out.textContent = new Date(last.getFullYear(), last.getMonth(), lastDay)
+            .toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
-    $('#start_date, #total_months, #due_day').on('input change', updateEnd);
-    updateEnd();
-});
+    [start, months, day].forEach((el) => el.addEventListener('input', update));
+    update();
+})();
 </script>
 @endpush

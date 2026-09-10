@@ -5,7 +5,23 @@
 @section('subheading', 'The amount and the account are all that is needed — everything else is optional.')
 
 @section('content')
-@php($allAccounts = $bankAccounts->concat($cardAccounts))
+@php
+    $allAccounts = $bankAccounts->concat($cardAccounts);
+
+    $searchable = fn ($account) => strtolower(
+        $account->name.' '.($account->owner?->name ?? '').' '.$account->type->label()
+    );
+
+    $accountGroups = collect([
+        ['label' => 'Recently used', 'items' => $recentAccounts],
+        ['label' => 'Bank & cash', 'items' => $bankAccounts],
+        ['label' => 'Credit cards', 'items' => $cardAccounts],
+    ])
+        ->reject(fn ($group) => $group['items']->isEmpty())
+        ->map(fn ($group) => $group + [
+            'haystacks' => $group['items']->map($searchable)->values()->toJson(),
+        ]);
+@endphp
 
 @if ($allAccounts->isEmpty())
     <x-ui.card>
@@ -63,13 +79,10 @@
                     <p class="text-sm text-destructive">{{ $message }}</p>
                 @enderror
 
-                @foreach ([
-                    ['label' => 'Recently used', 'items' => $recentAccounts],
-                    ['label' => 'Bank & cash', 'items' => $bankAccounts],
-                    ['label' => 'Credit cards', 'items' => $cardAccounts],
-                ] as $group)
-                    @continue($group['items']->isEmpty())
-                    <div x-show="$el.querySelectorAll('.chip:not([hidden])').length > 0">
+                @foreach ($accountGroups as $group)
+                    {{-- The heading hides when the filter excludes every account
+                         inside it, so no empty section is left behind. --}}
+                    <div x-show="filter === '' || {{ $group['haystacks'] }}.some(h => h.includes(filter.toLowerCase()))">
                         <p class="mb-2 text-xs font-medium text-muted-foreground">{{ $group['label'] }}</p>
                         <div class="flex flex-wrap gap-1.5">
                             @foreach ($group['items'] as $account)

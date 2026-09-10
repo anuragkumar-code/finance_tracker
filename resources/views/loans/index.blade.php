@@ -5,107 +5,85 @@
 @section('subheading', 'EMIs, what is left, and how far along you are')
 
 @section('actions')
-    <a href="{{ route('loans.create') }}" class="btn btn-sm btn-primary text-nowrap">+ Add loan</a>
+    <x-ui.button :href="route('loans.create')" icon="plus">Add loan</x-ui.button>
 @endsection
 
 @section('content')
 
 @if ($loans->isEmpty())
-    <div class="card">
-        <div class="card-body empty-state">
-            <h2 class="h5">No loans yet</h2>
-            <p class="mb-3">
-                Add a loan with its EMI, how many months it runs and when it started.
-                That is all that is needed — the schedule, what you have paid and what
-                is left are worked out from there.
-            </p>
-            <a href="{{ route('loans.create') }}" class="btn btn-primary">Add your first loan</a>
-        </div>
-    </div>
+    <x-ui.card>
+        <x-ui.empty-state icon="landmark" title="No loans yet"
+            description="Add a loan with its EMI, how many months it runs and when it started. That is all — the schedule, what you have paid and what is left are worked out from there.">
+            <x-ui.button :href="route('loans.create')" icon="plus">Add your first loan</x-ui.button>
+        </x-ui.empty-state>
+    </x-ui.card>
 @else
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-6">
-            <div class="card h-100"><div class="card-body">
-                <div class="stat-label">Still to pay</div>
-                <div class="stat-value money money-neg">@inr($totalRemaining)</div>
-                <div class="small text-body-secondary mt-1">
-                    Cash across remaining EMIs — includes future interest, not principal only.
+<div class="grid gap-3 sm:grid-cols-2 lg:gap-4">
+    <x-ui.stat label="Still to pay" icon="landmark" tone="debt"
+        :value="\App\Support\Money::inr($totalRemaining)"
+        hint="Cash across remaining EMIs — includes future interest, not principal only" />
+
+    <x-ui.stat label="Every month" icon="calendar-clock"
+        :value="\App\Support\Money::inr($monthlyEmi)"
+        hint="Combined EMIs across running loans" />
+</div>
+
+<div class="mt-4 grid gap-4 lg:grid-cols-2">
+    @foreach ($loans as $loan)
+        @php($progress = $loan->progressPercent())
+        <x-ui.card>
+            <x-ui.card-content class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <a href="{{ route('loans.show', $loan) }}"
+                               class="text-base font-semibold hover:underline">{{ $loan->name }}</a>
+                            @if ($loan->owner)
+                                <x-ui.badge variant="outline">{{ $loan->owner->name }}</x-ui.badge>
+                            @endif
+                        </div>
+                        <p class="mt-0.5 text-xs text-muted-foreground">
+                            {{ $loan->lender ?: 'Loan' }} · due on the {{ $loan->due_day }}
+                        </p>
+                    </div>
+                    <x-ui.badge :variant="$loan->status->value === 'active' ? 'default' : 'secondary'">
+                        {{ $loan->status->label() }}
+                    </x-ui.badge>
                 </div>
-            </div></div>
-        </div>
-        <div class="col-md-6">
-            <div class="card h-100"><div class="card-body">
-                <div class="stat-label">Every month</div>
-                <div class="stat-value money">@inr($monthlyEmi)</div>
-                <div class="small text-body-secondary mt-1">Combined EMIs across running loans</div>
-            </div></div>
-        </div>
-    </div>
 
-    <div class="row g-3">
-        @foreach ($loans as $loan)
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div>
-                                <a href="{{ route('loans.show', $loan) }}"
-                                   class="h6 mb-0 d-block text-decoration-none">
-                                    {{ $loan->name }}
-                                    @if ($loan->owner)
-                                        <span class="badge text-bg-light border fw-normal">{{ $loan->owner->name }}</span>
-                                    @endif
-                                </a>
-                                <div class="small text-body-secondary">
-                                    {{ $loan->lender ?: 'Loan' }} · due on the {{ $loan->due_day }}
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                <span class="badge text-bg-{{ $loan->status->badgeClass() }}">
-                                    {{ $loan->status->label() }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="row g-2 mb-3">
-                            <div class="col-4">
-                                <div class="stat-label">EMI</div>
-                                <div class="money fw-semibold">@inr($loan->emi_amount)</div>
-                            </div>
-                            <div class="col-4">
-                                <div class="stat-label">Paid</div>
-                                <div class="money">@inrc($loan->paidAmount())</div>
-                            </div>
-                            <div class="col-4">
-                                <div class="stat-label">Left</div>
-                                <div class="money">@inrc($loan->remainingAmount())</div>
-                            </div>
-                        </div>
-
-                        @php($progress = $loan->progressPercent())
-                        <div class="d-flex justify-content-between small mb-1">
-                            <span class="text-body-secondary">
-                                {{ $loan->paidCount() }} of {{ $loan->total_months }} EMIs
-                            </span>
-                            <span class="text-body-secondary">
-                                ends {{ $loan->end_date->format('M Y') }}
-                            </span>
-                        </div>
-                        <div class="progress" style="height:6px;">
-                            <div class="progress-bar bg-success" style="width: {{ $progress }}%"></div>
-                        </div>
-
-                        @if ($loan->overduePayments()->exists())
-                            <div class="small text-danger mt-2">
-                                {{ $loan->overduePayments()->count() }} EMI(s) past due and not yet recorded.
-                            </div>
-                        @endif
+                <div class="grid grid-cols-3 gap-3 border-y border-border py-3">
+                    <div>
+                        <p class="text-xs text-muted-foreground">EMI</p>
+                        <x-finance.money :amount="$loan->emi_amount" tone="strong" class="text-sm" />
+                    </div>
+                    <div>
+                        <p class="text-xs text-muted-foreground">Paid</p>
+                        <x-finance.money :amount="$loan->paidAmount()" compact tone="income" class="text-sm" />
+                    </div>
+                    <div>
+                        <p class="text-xs text-muted-foreground">Left</p>
+                        <x-finance.money :amount="$loan->remainingAmount()" compact tone="debt" class="text-sm" />
                     </div>
                 </div>
-            </div>
-        @endforeach
-    </div>
-@endif
 
+                <div>
+                    <div class="mb-1.5 flex items-baseline justify-between text-xs text-muted-foreground">
+                        <span>{{ $loan->paidCount() }} of {{ $loan->total_months }} EMIs</span>
+                        <span>ends {{ $loan->end_date->format('M Y') }}</span>
+                    </div>
+                    <x-ui.progress :value="$progress" variant="success"
+                        :label="$loan->name.' progress'" />
+                </div>
+
+                @if ($loan->overduePayments()->exists())
+                    <p class="text-xs text-destructive">
+                        {{ $loan->overduePayments()->count() }} EMI(s) past due and not yet recorded.
+                    </p>
+                @endif
+            </x-ui.card-content>
+        </x-ui.card>
+    @endforeach
+</div>
+@endif
 @endsection

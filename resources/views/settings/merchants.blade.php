@@ -5,156 +5,144 @@
 @section('subheading', 'What each place usually means, so quick entry can fill itself in')
 
 @section('content')
-<div class="row g-3">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="table-responsive">
-                <table class="table mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th>Merchant</th>
-                            <th>Usually</th>
-                            <th class="text-end">Entries</th>
-                            <th style="width:1%"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @forelse ($merchants as $merchant)
-                        <tr class="{{ $merchant->is_active ? '' : 'opacity-50' }}">
-                            <td class="fw-medium">{{ $merchant->name }}</td>
-                            <td class="small text-body-secondary">
-                                <span class="badge text-bg-{{ $merchant->channel->badgeClass() }}">{{ $merchant->channel->label() }}</span>
-                                {{ $merchant->defaultCategory?->name ?: 'No category' }}
-                                @if ($merchant->defaultAccount) · {{ $merchant->defaultAccount->name }} @endif
-                                @if ($merchant->defaultBeneficiary) · for {{ $merchant->defaultBeneficiary->name }} @endif
-                            </td>
-                            <td class="text-end text-body-secondary">{{ $merchant->transactions_count }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-link text-decoration-none p-0"
-                                        data-bs-toggle="collapse" data-bs-target="#m{{ $merchant->id }}">Edit</button>
-                            </td>
-                        </tr>
-                        <tr class="collapse" id="m{{ $merchant->id }}">
-                            <td colspan="4" class="bg-light">
-                                <form method="POST" action="{{ route('settings.merchants.update', $merchant) }}" class="row g-2 align-items-end">
-                                    @csrf @method('PUT')
-                                    <div class="col-md-3">
-                                        <label class="form-label small mb-1">Name</label>
-                                        <input type="text" name="name" value="{{ $merchant->name }}" class="form-control form-control-sm">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small mb-1">How you buy</label>
-                                        <select name="channel" class="form-select form-select-sm">
-                                            @foreach ($channels as $channel)
-                                                <option value="{{ $channel->value }}"
-                                                        @selected($merchant->channel === $channel)>
-                                                    {{ $channel->label() }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small mb-1">Category</label>
-                                        <select name="default_category_id" class="form-select form-select-sm">
-                                            <option value="">—</option>
-                                            @foreach ($categories as $category)
-                                                <option value="{{ $category->id }}" @selected($merchant->default_category_id == $category->id)>
-                                                    {{ $category->full_name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small mb-1">Account</label>
-                                        <select name="default_account_id" class="form-select form-select-sm">
-                                            <option value="">—</option>
-                                            @foreach ($accounts as $account)
-                                                <option value="{{ $account->id }}" @selected($merchant->default_account_id == $account->id)>
-                                                    {{ $account->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small mb-1">For</label>
-                                        <select name="default_beneficiary_id" class="form-select form-select-sm">
-                                            <option value="">—</option>
-                                            @foreach ($beneficiaries as $person)
-                                                <option value="{{ $person->id }}" @selected($merchant->default_beneficiary_id == $person->id)>
-                                                    {{ $person->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-1">
-                                        <button class="btn btn-sm btn-primary w-100">Save</button>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="form-check">
-                                            <input type="checkbox" name="is_active" value="1" class="form-check-input"
-                                                   id="mactive{{ $merchant->id }}" @checked($merchant->is_active)>
-                                            <label class="form-check-label small" for="mactive{{ $merchant->id }}">Active</label>
-                                        </div>
-                                    </div>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="empty-state">
-                                No merchants yet — they are created automatically as you type them into Quick Entry.
-                            </td>
-                        </tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="grid gap-4 lg:grid-cols-12">
+    <div class="lg:col-span-8">
+        <x-ui.card>
+            <x-ui.card-header title="All merchants" />
+            <x-ui.card-content flush>
+                @forelse ($merchants as $merchant)
+                    <div x-data="{ editing: false }"
+                         class="border-b border-border last:border-0 {{ $merchant->is_active ? '' : 'opacity-60' }}">
+                        <div class="flex items-start justify-between gap-3 px-5 py-3">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="text-sm font-medium">{{ $merchant->name }}</span>
+                                    <x-ui.badge :variant="match($merchant->channel->value) {
+                                        'quick_commerce' => 'destructive',
+                                        'ecommerce' => 'default',
+                                        'food_delivery' => 'warning',
+                                        'subscription' => 'info',
+                                        default => 'secondary',
+                                    }">{{ $merchant->channel->label() }}</x-ui.badge>
+                                </div>
+                                <p class="mt-0.5 text-xs text-muted-foreground">
+                                    {{ $merchant->defaultCategory?->name ?: 'No category' }}
+                                    @if ($merchant->defaultAccount) · {{ $merchant->defaultAccount->name }} @endif
+                                    @if ($merchant->defaultBeneficiary) · for {{ $merchant->defaultBeneficiary->name }} @endif
+                                </p>
+                            </div>
+                            <div class="flex shrink-0 items-center gap-2">
+                                <span class="text-xs text-muted-foreground tabular">
+                                    {{ $merchant->transactions_count }} entries
+                                </span>
+                                <button type="button" x-on:click="editing = !editing"
+                                        class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        aria-label="Edit {{ $merchant->name }}">
+                                    <x-ui.icon name="pencil" class="size-3.5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div x-show="editing" x-cloak class="border-t border-border bg-muted/40 px-5 py-4">
+                            <form method="POST" action="{{ route('settings.merchants.update', $merchant) }}"
+                                  class="grid gap-3 sm:grid-cols-2">
+                                @csrf @method('PUT')
+                                <x-ui.input label="Name" name="name" :value="$merchant->name" required />
+
+                                <x-ui.select label="How you buy" name="channel">
+                                    @foreach ($channels as $channel)
+                                        <option value="{{ $channel->value }}" @selected($merchant->channel === $channel)>
+                                            {{ $channel->label() }}
+                                        </option>
+                                    @endforeach
+                                </x-ui.select>
+
+                                <x-ui.select label="Category" name="default_category_id">
+                                    <option value="">—</option>
+                                    @foreach ($categories as $category)
+                                        <option value="{{ $category->id }}" @selected($merchant->default_category_id == $category->id)>
+                                            {{ $category->full_name }}
+                                        </option>
+                                    @endforeach
+                                </x-ui.select>
+
+                                <x-ui.select label="Account" name="default_account_id">
+                                    <option value="">—</option>
+                                    @foreach ($accounts as $account)
+                                        <option value="{{ $account->id }}" @selected($merchant->default_account_id == $account->id)>
+                                            {{ $account->name }}
+                                        </option>
+                                    @endforeach
+                                </x-ui.select>
+
+                                <x-ui.select label="For" name="default_beneficiary_id">
+                                    <option value="">—</option>
+                                    @foreach ($beneficiaries as $person)
+                                        <option value="{{ $person->id }}" @selected($merchant->default_beneficiary_id == $person->id)>
+                                            {{ $person->name }}
+                                        </option>
+                                    @endforeach
+                                </x-ui.select>
+
+                                <div class="flex items-end">
+                                    <x-ui.checkbox name="is_active" :checked="$merchant->is_active" label="Active" />
+                                </div>
+
+                                <div class="flex gap-2 sm:col-span-2">
+                                    <x-ui.button type="submit" size="sm">Save</x-ui.button>
+                                    <x-ui.button type="button" variant="ghost" size="sm" x-on:click="editing = false">
+                                        Cancel
+                                    </x-ui.button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @empty
+                    <x-ui.empty-state icon="store" title="No merchants yet"
+                        description="They are created automatically as you type them into Quick Entry." />
+                @endforelse
+            </x-ui.card-content>
+            <x-ui.card-footer>
+                A channel you set by hand is never overwritten by the name-matching guesser.
+            </x-ui.card-footer>
+        </x-ui.card>
     </div>
 
-    <div class="col-lg-4">
-        <div class="card">
-            <div class="card-header">Add a merchant</div>
-            <form method="POST" action="{{ route('settings.merchants.store') }}" class="card-body">
+    <div class="lg:col-span-4">
+        <x-ui.card>
+            <x-ui.card-header title="Add a merchant" />
+            <form method="POST" action="{{ route('settings.merchants.store') }}">
                 @csrf
-                <div class="mb-3">
-                    <label for="m_name" class="form-label">Name</label>
-                    <input type="text" name="name" id="m_name" class="form-control" required placeholder="Amazon">
-                </div>
-                <div class="mb-3">
-                    <label for="m_channel" class="form-label">How you buy from them</label>
-                    <select name="channel" id="m_channel" class="form-select">
+                <x-ui.card-content class="space-y-4">
+                    <x-ui.input label="Name" name="name" placeholder="Amazon" required />
+
+                    <x-ui.select label="How you buy from them" name="channel"
+                        hint="Drives the quick-commerce and online-shopping figures in reports.">
                         @foreach ($channels as $channel)
                             <option value="{{ $channel->value }}" @selected($channel->value === 'offline')>
                                 {{ $channel->label() }} — {{ $channel->hint() }}
                             </option>
                         @endforeach
-                    </select>
-                    <div class="form-text">
-                        Drives the quick-commerce and online-shopping figures in reports.
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="m_cat" class="form-label">Usual category</label>
-                    <select name="default_category_id" id="m_cat" class="form-select">
+                    </x-ui.select>
+
+                    <x-ui.select label="Usual category" name="default_category_id">
                         <option value="">—</option>
                         @foreach ($categories as $category)
                             <option value="{{ $category->id }}">{{ $category->full_name }}</option>
                         @endforeach
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="m_acc" class="form-label">Usual account</label>
-                    <select name="default_account_id" id="m_acc" class="form-select">
+                    </x-ui.select>
+
+                    <x-ui.select label="Usual account" name="default_account_id">
                         <option value="">—</option>
                         @foreach ($accounts as $account)
                             <option value="{{ $account->id }}">{{ $account->name }}</option>
                         @endforeach
-                    </select>
-                </div>
-                <button class="btn btn-primary w-100">Add merchant</button>
+                    </x-ui.select>
+
+                    <x-ui.button type="submit" class="w-full">Add merchant</x-ui.button>
+                </x-ui.card-content>
             </form>
-        </div>
+        </x-ui.card>
     </div>
 </div>
 @endsection
