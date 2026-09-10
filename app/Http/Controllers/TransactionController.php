@@ -35,10 +35,10 @@ class TransactionController extends Controller
 
         $this->applyFilters($query, $request);
 
+        $this->applySort($query, $request);
+
         $transactions = $query
-            ->orderByDesc('transaction_date')
-            ->orderByDesc('id')
-            ->paginate(50)
+            ->paginate($this->perPage($request))
             ->withQueryString();
 
         // Only the spending rows are totalled. Adding income, transfers and
@@ -178,6 +178,42 @@ class TransactionController extends Controller
         return redirect()
             ->route('transactions.show', $transaction)
             ->with('status', 'Entry restored.');
+    }
+
+    /**
+     * Column sorting for the ledger.
+     *
+     * Only these columns can be sorted on — the value arrives from the query
+     * string, so it is matched against a fixed list rather than passed to
+     * orderBy. Whatever the primary sort, id breaks ties: two entries on the
+     * same date must not swap places between page one and page two, or rows
+     * get skipped as you page through.
+     */
+    private function applySort($query, Request $request): void
+    {
+        $sortable = [
+            'date' => 'transaction_date',
+            'amount' => 'amount',
+        ];
+
+        $column = $sortable[$request->query('sort')] ?? 'transaction_date';
+        $direction = $request->query('dir') === 'asc' ? 'asc' : 'desc';
+
+        $query->orderBy($column, $direction);
+
+        if ($column !== 'transaction_date') {
+            $query->orderByDesc('transaction_date');
+        }
+
+        $query->orderByDesc('id');
+    }
+
+    /** Rows per page, from a fixed set so the query string cannot ask for 50,000. */
+    private function perPage(Request $request): int
+    {
+        $requested = (int) $request->query('per_page', 50);
+
+        return in_array($requested, [25, 50, 100, 200], true) ? $requested : 50;
     }
 
     private function applyFilters($query, Request $request): void

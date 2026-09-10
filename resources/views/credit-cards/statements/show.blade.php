@@ -63,23 +63,23 @@
                         description="No purchases were linked into this statement." />
                 @else
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
+                        <table class="data-table">
                             <thead>
-                                <tr class="border-b border-border text-left">
-                                    <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Date</th>
-                                    <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Details</th>
-                                    <th scope="col" class="hidden px-5 py-2.5 text-xs font-medium text-muted-foreground sm:table-cell">Category</th>
-                                    <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Amount</th>
+                                <tr>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Details</th>
+                                    <th scope="col" class="hidden sm:table-cell">Category</th>
+                                    <th scope="col" class="num">Amount</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-border">
+                            <tbody>
                             @foreach ($statement->items as $item)
                                 @php($t = $item->transaction)
-                                <tr class="transition-colors hover:bg-muted/60">
-                                    <td class="whitespace-nowrap px-5 py-3 text-muted-foreground tabular">
+                                <tr>
+                                    <td class="whitespace-nowrap tabular">
                                         {{ $t?->transaction_date?->format('d M') ?? '—' }}
                                     </td>
-                                    <td class="px-5 py-3">
+                                    <td>
                                         @if ($t)
                                             <a href="{{ route('transactions.show', $t) }}" class="hover:underline">
                                                 {{ $t->description ?: $t->merchant?->name ?: 'Purchase' }}
@@ -88,10 +88,10 @@
                                             <span class="text-muted-foreground">Transaction removed</span>
                                         @endif
                                     </td>
-                                    <td class="hidden px-5 py-3 text-muted-foreground sm:table-cell">
+                                    <td class="hidden sm:table-cell">
                                         {{ $t?->category?->name ?: '—' }}
                                     </td>
-                                    <td class="px-5 py-3 text-right">
+                                    <td class="num">
                                         <x-finance.money :amount="$item->amount_snapshot" />
                                         @if ($t && bccomp((string) $item->amount_snapshot, (string) $t->amount, 2) !== 0)
                                             <p class="text-xs text-warning">

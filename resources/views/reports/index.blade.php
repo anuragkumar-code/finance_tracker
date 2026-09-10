@@ -205,64 +205,28 @@
 @push('scripts')
 @if (bccomp($spending, '0', 2) === 1 || bccomp($income, '0', 2) === 1)
 <script>
-(function () {
-    new Chart(document.getElementById('weeklyChart'), {
-        type: 'bar',
-        data: {
-            labels: @json($weekly->pluck('label')),
-            datasets: [
-                {
-                    label: 'Received',
-                    data: @json($weekly->pluck('income')->map(fn ($v) => (float) $v)),
-                    backgroundColor: 'oklch(0.58 0.12 152 / 0.85)',
-                    borderRadius: 4,
-                    maxBarThickness: 26,
-                },
-                {
-                    label: 'Spent',
-                    data: @json($weekly->pluck('spending')->map(fn ($v) => (float) $v)),
-                    backgroundColor: 'oklch(0.55 0.13 253 / 0.85)',
-                    borderRadius: 4,
-                    maxBarThickness: 26,
-                },
-            ],
-        },
-        options: {
-            scales: {
-                x: { grid: { display: false }, border: { display: false } },
-                y: {
-                    beginAtZero: true,
-                    border: { display: false },
-                    grid: { color: 'oklch(0.923 0.005 248)' },
-                    ticks: { callback: (v) => window.ftMoney(v) },
-                },
-            },
-            plugins: {
-                legend: { display: true, position: 'bottom', labels: { boxWidth: 8, boxHeight: 8, usePointStyle: true } },
-                tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + window.ftMoney(c.parsed.y) } },
-            },
-        },
+document.addEventListener('DOMContentLoaded', function () {
+    ftChart.bars(document.getElementById('weeklyChart'), {
+        horizontal: false,
+        labels: @json($weekly->pluck('label')),
+        datasets: [
+            { label: 'Received', data: @json($weekly->pluck('income')->map(fn ($v) => (float) $v)), color: ftChart.colors.income },
+            { label: 'Spent', data: @json($weekly->pluck('spending')->map(fn ($v) => (float) $v)), color: ftChart.colors.expense },
+        ],
     });
 
     @if ($byCategory->isNotEmpty())
-    const labels = @json($byCategory->pluck('label'));
-    const data = @json($byCategory->pluck('amount')->map(fn ($a) => (float) $a));
-    const colors = window.ftChartPalette.slice(0, labels.length);
+        var labels = @json($byCategory->pluck('label'));
+        var data = @json($byCategory->pluck('amount')->map(fn ($a) => (float) $a));
+        var colors = ftChart.palette.slice(0, labels.length);
 
-    document.querySelectorAll('[data-swatch]').forEach((el) => {
-        el.style.backgroundColor = colors[Number(el.dataset.swatch) % colors.length];
-    });
+        document.querySelectorAll('[data-swatch]').forEach(function (el) {
+            el.style.backgroundColor = colors[Number(el.dataset.swatch) % colors.length];
+        });
 
-    new Chart(document.getElementById('categoryChart'), {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
-        options: {
-            cutout: '72%',
-            plugins: { tooltip: { callbacks: { label: (c) => c.label + ': ' + window.ftMoney(c.parsed) } } },
-        },
-    });
+        ftChart.donut(document.getElementById('categoryChart'), { labels: labels, data: data });
     @endif
-})();
+});
 </script>
 @endif
 @endpush

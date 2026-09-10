@@ -13,7 +13,12 @@
 /.zed
 /auth.json
 /node_modules
-/public/build
+# Laravel ignores /public/build because it is Vite output. This project has no
+# Vite build — the stylesheet is compiled by the Tailwind standalone binary and
+# committed, so a fresh clone runs with no build step. Ignore the directory but
+# keep the one file that has to ship.
+/public/build/*
+!/public/build/app.css
 /public/hot
 /public/storage
 /storage/*.key

@@ -31,21 +31,21 @@
     <x-ui.card-header title="Purchases vs bill payments" />
     <x-ui.card-content flush>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="data-table">
                 <thead>
-                    <tr class="border-b border-border text-left">
-                        <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Card</th>
-                        <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Charged</th>
-                        <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Bills paid</th>
-                        <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Owed now</th>
-                        <th scope="col" class="hidden px-5 py-2.5 text-right text-xs font-medium text-muted-foreground sm:table-cell">Available</th>
-                        <th scope="col" class="hidden px-5 py-2.5 text-xs font-medium text-muted-foreground lg:table-cell" style="width:12%">Used</th>
+                    <tr>
+                        <th scope="col">Card</th>
+                        <th scope="col" class="num">Charged</th>
+                        <th scope="col" class="num">Bills paid</th>
+                        <th scope="col" class="num">Owed now</th>
+                        <th scope="col" class="hidden num sm:table-cell">Available</th>
+                        <th scope="col" class="hidden lg:table-cell" style="width:12%">Used</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-border">
+                <tbody>
                 @foreach ($rows as $row)
-                    <tr class="transition-colors hover:bg-muted/60">
-                        <td class="px-5 py-3">
+                    <tr>
+                        <td>
                             <a href="{{ route('credit-cards.show', $row->card) }}"
                                class="font-medium hover:underline">{{ $row->card->card_name }}</a>
                             <p class="text-xs text-muted-foreground">
@@ -53,22 +53,22 @@
                                 bills {{ $row->card->statement_day }}, due {{ $row->card->payment_due_day }}
                             </p>
                         </td>
-                        <td class="px-5 py-3 text-right">
+                        <td class="num">
                             <a href="{{ route('transactions.index', ['start' => $start, 'end' => $end, 'type' => 'expense', 'account_id' => $row->card->account_id]) }}"
                                class="hover:underline">
                                 <x-finance.money :amount="$row->spending" tone="strong" />
                             </a>
                         </td>
-                        <td class="px-5 py-3 text-right">
+                        <td class="num">
                             <x-finance.money :amount="$row->payments" tone="muted" />
                         </td>
-                        <td class="px-5 py-3 text-right">
+                        <td class="num">
                             <x-finance.money :amount="$row->outstanding" tone="debt" />
                         </td>
-                        <td class="hidden px-5 py-3 text-right sm:table-cell">
+                        <td class="hidden num sm:table-cell">
                             <x-finance.money :amount="$row->available" />
                         </td>
-                        <td class="hidden px-5 py-3 lg:table-cell">
+                        <td class="hidden lg:table-cell">
                             <x-ui.progress :value="$row->utilisation"
                                 :variant="$row->utilisation >= 70 ? 'destructive' : ($row->utilisation >= 40 ? 'warning' : 'success')"
                                 :label="$row->card->card_name.' credit used'" />
@@ -78,15 +78,15 @@
                 @endforeach
                 </tbody>
                 <tfoot>
-                    <tr class="border-t border-border font-medium">
-                        <td class="px-5 py-3">Total</td>
-                        <td class="px-5 py-3 text-right">
+                    <tr class="border-t">
+                        <td>Total</td>
+                        <td class="num">
                             <x-finance.money :amount="$rows->reduce(fn ($c, $r) => bcadd($c, $r->spending, 2), '0.00')" tone="strong" />
                         </td>
-                        <td class="px-5 py-3 text-right">
+                        <td class="num">
                             <x-finance.money :amount="$rows->reduce(fn ($c, $r) => bcadd($c, $r->payments, 2), '0.00')" tone="muted" />
                         </td>
-                        <td class="px-5 py-3 text-right">
+                        <td class="num">
                             <x-finance.money :amount="$rows->reduce(fn ($c, $r) => bcadd($c, $r->outstanding, 2), '0.00')" tone="debt" />
                         </td>
                         <td colspan="2" class="hidden sm:table-cell"></td>
@@ -119,29 +119,14 @@
 @push('scripts')
 @if ($rows->isNotEmpty())
 <script>
-new Chart(document.getElementById('cardTrend'), {
-    type: 'bar',
-    data: {
+document.addEventListener('DOMContentLoaded', function () {
+    ftChart.bars(document.getElementById('cardTrend'), {
+        horizontal: false,
         labels: @json($series->pluck('label')),
-        datasets: [{
-            data: @json($series->pluck('card_spending')->map(fn ($v) => (float) $v)),
-            backgroundColor: 'oklch(0.68 0.15 70 / 0.85)',
-            borderRadius: 4,
-            maxBarThickness: 32,
-        }],
-    },
-    options: {
-        scales: {
-            x: { grid: { display: false }, border: { display: false } },
-            y: {
-                beginAtZero: true,
-                border: { display: false },
-                grid: { color: 'oklch(0.923 0.005 248)' },
-                ticks: { callback: (v) => window.ftMoney(v) },
-            },
-        },
-        plugins: { tooltip: { callbacks: { label: (c) => window.ftMoney(c.parsed.y) } } },
-    },
+        data: @json($series->pluck('card_spending')->map(fn ($v) => (float) $v)),
+        color: ftChart.colors.debt,
+        label: 'Charged',
+    });
 });
 </script>
 @endif

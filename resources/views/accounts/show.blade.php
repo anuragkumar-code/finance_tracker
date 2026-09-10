@@ -56,24 +56,24 @@
             </x-ui.empty-state>
         @else
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="data-table">
                     <thead>
-                        <tr class="border-b border-border text-left">
-                            <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Date</th>
-                            <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Details</th>
-                            <th scope="col" class="hidden px-5 py-2.5 text-xs font-medium text-muted-foreground sm:table-cell">Type</th>
-                            <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">In</th>
-                            <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Out</th>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Details</th>
+                            <th scope="col" class="hidden sm:table-cell">Type</th>
+                            <th scope="col" class="num">In</th>
+                            <th scope="col" class="num">Out</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-border">
+                    <tbody>
                     @foreach ($transactions as $t)
                         @php($isIncrease = $t->balance_effect === \App\Enums\BalanceEffect::Increase)
-                        <tr class="transition-colors hover:bg-muted/60">
-                            <td class="whitespace-nowrap px-5 py-3 text-muted-foreground tabular">
+                        <tr>
+                            <td class="whitespace-nowrap tabular">
                                 {{ $t->transaction_date->format('d M') }}
                             </td>
-                            <td class="px-5 py-3">
+                            <td>
                                 <a href="{{ route('transactions.show', $t) }}" class="font-medium hover:underline">
                                     {{ $t->description ?: $t->merchant?->name ?: $t->type->label() }}
                                 </a>
@@ -81,15 +81,15 @@
                                     <p class="text-xs text-muted-foreground">{{ $t->category->name }}</p>
                                 @endif
                             </td>
-                            <td class="hidden px-5 py-3 sm:table-cell">
+                            <td class="hidden sm:table-cell">
                                 <x-ui.badge variant="secondary">{{ $t->type->label() }}</x-ui.badge>
                             </td>
-                            <td class="px-5 py-3 text-right">
+                            <td class="num">
                                 @if ($isIncrease)
                                     <x-finance.money :amount="$t->amount" tone="income" />
                                 @endif
                             </td>
-                            <td class="px-5 py-3 text-right">
+                            <td class="num">
                                 @if (! $isIncrease)
                                     <x-finance.money :amount="$t->amount" tone="expense" />
                                 @endif

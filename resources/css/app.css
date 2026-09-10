@@ -7,6 +7,37 @@
 @source "../views/**/*.blade.php";
 
 /*
+ * Inter, self-hosted.
+ *
+ * The app makes no third-party requests (spec section 32), so the variable
+ * font is vendored into public/vendor/fonts rather than pulled from a CDN at
+ * runtime. Two subsets: Latin covers everything the app actually renders,
+ * Latin-Extended is there for names that carry accents.
+ */
+@font-face {
+    font-family: "InterVariable";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url("/vendor/fonts/inter-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+        U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+        U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: "InterVariable";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url("/vendor/fonts/inter-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+        U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+        U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+        U+A720-A7FF;
+}
+
+/*
  * Design tokens.
  *
  * Semantic names, never raw colours in templates: a card is `bg-card`, not
@@ -26,6 +57,7 @@
 
     --color-muted: var(--muted);
     --color-muted-foreground: var(--muted-foreground);
+    --color-subtle: var(--subtle);
 
     --color-border: var(--border);
     --color-input: var(--input);
@@ -57,39 +89,65 @@
     --color-expense: var(--expense);
     --color-debt: var(--debt);
 
-    --font-sans: "Inter var", "Inter", ui-sans-serif, system-ui, -apple-system,
+    /* The sidebar is its own surface with its own scale, so the shell can be
+       retoned without disturbing the content area. */
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-muted: var(--sidebar-muted);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-border: var(--sidebar-border);
+
+    --font-sans: "InterVariable", "Inter", ui-sans-serif, system-ui, -apple-system,
         "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
 
     --radius-card: 0.75rem;
+
+    /*
+     * Shadows are hairline-plus-diffuse rather than one soft blur. A single
+     * large blur reads as a 2014 "material" card; stacking a near-opaque 1px
+     * edge under a wide, very low alpha spread is what gives the crisp lift
+     * that current interfaces have.
+     */
+    --shadow-xs: 0 1px 2px -1px oklch(0.21 0.02 258 / 0.08),
+        0 1px 1px oklch(0.21 0.02 258 / 0.04);
+    --shadow-sm: 0 1px 3px oklch(0.21 0.02 258 / 0.07),
+        0 1px 2px -1px oklch(0.21 0.02 258 / 0.05);
+    --shadow-md: 0 4px 12px -2px oklch(0.21 0.02 258 / 0.09),
+        0 2px 4px -2px oklch(0.21 0.02 258 / 0.05);
+    --shadow-lg: 0 12px 32px -8px oklch(0.21 0.02 258 / 0.16),
+        0 4px 10px -4px oklch(0.21 0.02 258 / 0.08);
 }
 
 :root {
-    --background: oklch(0.985 0.002 247);
-    --foreground: oklch(0.21 0.02 258);
+    /* The page sits a touch below the cards. Without that gap every surface
+       reads at the same depth and the layout looks like a wireframe. */
+    --background: oklch(0.976 0.003 250);
+    --foreground: oklch(0.19 0.02 258);
 
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.21 0.02 258);
+    --card-foreground: oklch(0.19 0.02 258);
 
-    --muted: oklch(0.968 0.004 247);
-    --muted-foreground: oklch(0.554 0.02 257);
+    --muted: oklch(0.966 0.004 250);
+    --muted-foreground: oklch(0.535 0.019 257);
+    --subtle: oklch(0.71 0.015 256);
 
-    --border: oklch(0.923 0.005 248);
-    --input: oklch(0.923 0.005 248);
+    --border: oklch(0.918 0.005 250);
+    --input: oklch(0.905 0.006 250);
     --ring: oklch(0.62 0.14 253);
 
     /* Dark slate rather than a saturated brand blue: calmer, and it keeps
        actual colour available for financial meaning. */
-    --primary: oklch(0.28 0.03 258);
+    --primary: oklch(0.24 0.026 258);
     --primary-foreground: oklch(0.985 0.002 247);
 
-    --secondary: oklch(0.968 0.004 247);
+    --secondary: oklch(0.966 0.004 250);
     --secondary-foreground: oklch(0.28 0.03 258);
 
-    --accent: oklch(0.968 0.004 247);
-    --accent-foreground: oklch(0.28 0.03 258);
+    --accent: oklch(0.955 0.006 250);
+    --accent-foreground: oklch(0.24 0.026 258);
 
-    --destructive: oklch(0.58 0.19 27);
+    --destructive: oklch(0.577 0.19 27);
     --destructive-foreground: oklch(0.985 0.002 247);
 
     --success: oklch(0.55 0.13 152);
@@ -102,15 +160,35 @@
     --info-foreground: oklch(0.985 0.002 247);
 
     --income: oklch(0.52 0.13 152);
-    --expense: oklch(0.55 0.18 27);
+    --expense: oklch(0.545 0.185 27);
     --debt: oklch(0.55 0.12 40);
 
-    /* Sidebar reads as a distinct surface, not just a darker page. */
-    --sidebar: oklch(0.21 0.02 258);
-    --sidebar-foreground: oklch(0.86 0.01 250);
-    --sidebar-muted: oklch(0.62 0.02 254);
-    --sidebar-accent: oklch(0.28 0.025 258);
-    --sidebar-border: oklch(0.30 0.02 258);
+    /*
+     * A light sidebar, recessed slightly from the content.
+     *
+     * The dark navigation panel is the most recognisable tell of a 2015 admin
+     * template. Current products keep the whole shell on one light scale and
+     * separate the rail with a hairline, so the eye goes to the data rather
+     * than to a black stripe down the side.
+     */
+    --sidebar: oklch(0.986 0.002 250);
+    --sidebar-foreground: oklch(0.38 0.018 258);
+    --sidebar-muted: oklch(0.60 0.017 257);
+    --sidebar-accent: oklch(0.945 0.006 250);
+    --sidebar-border: oklch(0.916 0.005 250);
+
+    /*
+     * Chart series live as tokens so a chart and the legend beside it cannot
+     * drift apart, and so recolouring is a one-file change.
+     */
+    --chart-1: oklch(0.55 0.14 254);
+    --chart-2: oklch(0.63 0.13 190);
+    --chart-3: oklch(0.68 0.15 70);
+    --chart-4: oklch(0.58 0.13 152);
+    --chart-5: oklch(0.60 0.16 12);
+    --chart-6: oklch(0.60 0.13 310);
+    --chart-7: oklch(0.66 0.11 40);
+    --chart-8: oklch(0.55 0.07 258);
 }
 
 @layer base {
@@ -123,14 +201,24 @@
         color: var(--foreground);
         font-family: var(--font-sans);
         -webkit-font-smoothing: antialiased;
-        text-rendering: optimizeLegibility;
+        -moz-osx-font-smoothing: grayscale;
+        /* cv11 is Inter's single-storey "a" alternates off; ss01 tightens the
+           punctuation. Together they are most of what makes Inter read as
+           product UI rather than as a web page. */
+        font-feature-settings: "cv11", "ss01";
+        letter-spacing: -0.006em;
+    }
+
+    /* Headings tighten as they grow, the way display type is set by hand. */
+    h1, h2, h3, h4 {
+        letter-spacing: -0.019em;
     }
 
     /* Money must line up column to column, or a table of figures cannot be
        scanned at a glance. */
     .tabular {
         font-variant-numeric: tabular-nums;
-        font-feature-settings: "tnum";
+        font-feature-settings: "tnum", "cv11", "ss01";
     }
 
     /* A visible focus ring everywhere, not just where it was remembered. */
@@ -140,7 +228,27 @@
     }
 
     ::placeholder {
-        color: var(--muted-foreground);
+        color: var(--subtle);
+    }
+
+    /* Scrollbars inside panels, in the app's own greys rather than the OS's. */
+    .scroll-thin {
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+    }
+
+    .scroll-thin::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .scroll-thin::-webkit-scrollbar-thumb {
+        background-color: var(--border);
+        border-radius: 9999px;
+    }
+
+    .scroll-thin::-webkit-scrollbar-track {
+        background: transparent;
     }
 }
 
@@ -171,6 +279,7 @@
         line-height: 1.15rem;
         cursor: pointer;
         user-select: none;
+        box-shadow: var(--shadow-xs);
         transition: background-color 120ms ease, border-color 120ms ease,
             color 120ms ease, box-shadow 120ms ease;
     }
@@ -204,9 +313,222 @@
         font-size: 0.6875rem;
         color: var(--muted-foreground);
     }
+
+    /*
+     * Data tables.
+     *
+     * Every list screen was restating the same dozen utility classes on every
+     * th and td, which is how header padding drifted between pages. One place
+     * now, so a table looks like a table everywhere.
+     */
+    .data-table {
+        width: 100%;
+        font-size: 0.8125rem;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .data-table thead th {
+        background-color: var(--card);
+        padding: 0.625rem 1.25rem;
+        text-align: left;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--subtle);
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+    }
+
+    /*
+     * Headers stick only inside a scroll container of their own. Sticking them
+     * on a page-scrolled table would pin them to the top of the viewport,
+     * underneath the app header, rather than to the top of the table.
+     */
+    .table-scroll {
+        overflow: auto;
+    }
+
+    .table-scroll .data-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .data-table tbody td {
+        padding: 0.6875rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+
+    .data-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .data-table tbody tr {
+        transition: background-color 100ms ease;
+    }
+
+    .data-table tbody tr:hover {
+        background-color: var(--muted);
+    }
+
+    /* A row that navigates should say so before it is clicked. */
+    .data-table tbody tr.row-link:hover {
+        cursor: pointer;
+    }
+
+    .data-table .num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum", "cv11";
+        white-space: nowrap;
+    }
+
+    /* Column headers that sort. The arrow only occupies space once active,
+       so quiet columns stay quiet. */
+    .th-sort {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: inherit;
+        border-radius: 0.25rem;
+        transition: color 100ms ease;
+    }
+
+    .th-sort:hover {
+        color: var(--foreground);
+    }
+
+    /*
+     * Segmented control — used for date ranges and chart period switches.
+     * A row of buttons where exactly one is on, which is a different thing
+     * from a row of links and should not look like one.
+     */
+    .segmented {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.125rem;
+        padding: 0.1875rem;
+        border-radius: 0.5rem;
+        background-color: var(--muted);
+        border: 1px solid var(--border);
+    }
+
+    .segmented > * {
+        padding: 0.25rem 0.625rem;
+        border-radius: 0.375rem;
+        font-size: 0.8125rem;
+        line-height: 1.25rem;
+        color: var(--muted-foreground);
+        white-space: nowrap;
+        transition: background-color 120ms ease, color 120ms ease,
+            box-shadow 120ms ease;
+    }
+
+    .segmented > *:hover {
+        color: var(--foreground);
+    }
+
+    .segmented > [aria-current="page"],
+    .segmented > [aria-selected="true"] {
+        background-color: var(--card);
+        color: var(--foreground);
+        font-weight: 500;
+        box-shadow: var(--shadow-xs);
+    }
 }
 
 /* Alpine sets x-cloak until it boots; without this, dropdown contents flash. */
 [x-cloak] {
     display: none !important;
+}
+
+/*
+ * Shell geometry.
+ *
+ * The rail width is a custom property so the sidebar and the content offset
+ * can never disagree, and so collapsing is a single class on <html> rather
+ * than state threaded through every page. The class is set by an inline script
+ * before first paint, which is what stops the layout jumping on load.
+ */
+:root {
+    --nav-w: 15.5rem;
+}
+
+html.ft-rail {
+    --nav-w: 4.25rem;
+}
+
+@media (min-width: 1024px) {
+    .nav-panel,
+    .nav-offset {
+        transition: width 180ms cubic-bezier(0.4, 0, 0.2, 1),
+            padding-left 180ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+}
+
+/* Collapsed, the rail keeps only the icons. Labels are hidden rather than
+   removed so the markup — and the accessible name — stays intact. */
+html.ft-rail .nav-label {
+    display: none;
+}
+
+html.ft-rail .nav-section-label {
+    opacity: 0;
+    height: 0.5rem;
+    overflow: hidden;
+}
+
+html.ft-rail .nav-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/*
+ * Sidebar links.
+ *
+ * Previously these carried inline styles plus onmouseover/onmouseout handlers,
+ * which meant hover was a JS event rather than a CSS state — it stuck when the
+ * pointer left during a scroll, and it could not respond to focus at all.
+ */
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    border-radius: 0.5rem;
+    padding: 0.4375rem 0.625rem;
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    color: var(--sidebar-foreground);
+    transition: background-color 120ms ease, color 120ms ease,
+        box-shadow 120ms ease;
+}
+
+.nav-item:hover {
+    background-color: var(--sidebar-accent);
+    color: var(--foreground);
+}
+
+.nav-item[aria-current="page"] {
+    background-color: var(--card);
+    color: var(--foreground);
+    font-weight: 500;
+    box-shadow: var(--shadow-xs);
+}
+
+.nav-item[aria-current="page"] svg {
+    color: var(--primary);
+}
+
+.nav-item svg {
+    flex-shrink: 0;
+    color: var(--sidebar-muted);
+    transition: color 120ms ease;
+}
+
+.nav-item:hover svg {
+    color: var(--foreground);
 }

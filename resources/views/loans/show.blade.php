@@ -61,29 +61,29 @@
                         description="Nothing left to confirm on this loan." />
                 @else
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
+                        <table class="data-table">
                             <thead>
-                                <tr class="border-b border-border text-left">
-                                    <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">#</th>
-                                    <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Due</th>
-                                    <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Amount</th>
-                                    <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Record</th>
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Due</th>
+                                    <th scope="col" class="num">Amount</th>
+                                    <th scope="col" class="num">Record</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-border">
+                            <tbody>
                             @foreach ($upcoming as $instalment)
-                                <tr class="{{ $instalment->isOverdue() ? 'bg-warning/[0.07]' : '' }} transition-colors hover:bg-muted/60">
-                                    <td class="px-5 py-3 text-muted-foreground tabular">{{ $instalment->period_number }}</td>
-                                    <td class="px-5 py-3">
+                                <tr class="{{ $instalment->isOverdue() ? 'bg-warning/[0.07]' : '' }}">
+                                    <td class="tabular">{{ $instalment->period_number }}</td>
+                                    <td>
                                         {{ $instalment->due_date->format('d M Y') }}
                                         @if ($instalment->isOverdue())
                                             <x-ui.badge variant="destructive" class="ml-1">Overdue</x-ui.badge>
                                         @endif
                                     </td>
-                                    <td class="px-5 py-3 text-right">
+                                    <td class="num">
                                         <x-finance.money :amount="$instalment->amount" />
                                     </td>
-                                    <td class="px-5 py-3 text-right">
+                                    <td class="num">
                                         <x-ui.button variant="outline" size="sm"
                                             x-on:click="$dispatch('open-dialog', 'pay-{{ $instalment->id }}')">
                                             Mark paid

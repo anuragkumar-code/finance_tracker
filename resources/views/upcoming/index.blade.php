@@ -5,12 +5,10 @@
 @section('subheading', 'Your bank balance minus what is already committed')
 
 @section('actions')
-    <div class="inline-flex rounded-lg border border-border bg-muted p-0.5">
+    <div class="segmented">
         @foreach ([7, 30, 60, 90] as $option)
             <a href="{{ route('upcoming.index', ['days' => $option]) }}"
-               @if ($days === $option) aria-current="page" @endif
-               class="rounded-md px-3 py-1.5 text-sm transition-colors
-                      {{ $days === $option ? 'bg-card font-medium text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground' }}">
+               @if ($days === $option) aria-current="page" @endif>
                 {{ $option }}d
             </a>
         @endforeach

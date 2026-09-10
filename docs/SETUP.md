@@ -263,14 +263,48 @@ to Tailwind as semantic names — `bg-card`, `text-muted-foreground`,
 meaning. Components never name a raw colour, so dark mode can be added later by
 redefining the variables rather than editing every template.
 
+### Typography
+
+Inter Variable is self-hosted in `public/vendor/fonts` (two woff2 subsets,
+122KB) rather than loaded from a font CDN, because the app must make no
+third-party requests. The Latin subset is preloaded in the layout so text does
+not reflow on first paint.
+
+### Charts
+
+`public/js/charts.js` owns the house chart style — palette from the `--chart-*`
+tokens, no vertical gridlines, gradient area fills, rounded bars, and shared
+INR formatting. Pages call `ftChart.area` / `.bars` / `.donut` / `.sparkline`
+rather than constructing Chart.js config, so restyling every chart in the app
+is one edit. Chart.js itself is vendored in `public/vendor/chartjs`.
+
+### The shell
+
+The sidebar collapses to an icon rail; the state is a `ft-rail` class on
+`<html>`, restored by an inline script before first paint so the layout does
+not jump on load. Ctrl/Cmd+K opens a command palette built from the same nav
+array the sidebar renders, so a destination can never appear in one and not
+the other.
+
 ### Components
 
 Reusable Blade primitives live in `resources/views/components/ui` (button, card,
 badge, input, select, textarea, checkbox, alert, dialog, dropdown, toast,
-progress, stat, empty-state, pagination, icon) and
+progress, stat, empty-state, pagination, icon, sort-header, filter-chips,
+command-palette) and
 `resources/views/components/finance` (money). Money is always rendered through
 `<x-finance.money :amount="..." />` so Indian grouping and semantic colour stay
 consistent everywhere.
 
 Dialogs, dropdowns, the mobile sidebar, filters and toasts run on Alpine. Dialogs
 trap focus, close on Escape and lock background scrolling.
+
+### Tables, filters and sorting
+
+Table styling lives in one place as the `.data-table` component class, so header
+padding and row hover cannot drift between pages. Column sorting on the
+transactions ledger is a link (`?sort=&dir=`), not JavaScript, so a sorted view
+has its own URL and works with the back button; the sortable columns are matched
+against a fixed list in `TransactionController::applySort`, and `id` always
+breaks ties so rows cannot swap places between pages. Applied filters render as
+removable chips through `<x-ui.filter-chips>`.

@@ -26,28 +26,28 @@
             <x-ui.card-header title="Where each account stands" />
             <x-ui.card-content flush>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="data-table">
                         <thead>
-                            <tr class="border-b border-border text-left">
-                                <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Account</th>
-                                <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">App says</th>
-                                <th scope="col" class="hidden px-5 py-2.5 text-xs font-medium text-muted-foreground sm:table-cell">Last checked</th>
-                                <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
+                            <tr>
+                                <th scope="col">Account</th>
+                                <th scope="col" class="num">App says</th>
+                                <th scope="col" class="hidden sm:table-cell">Last checked</th>
+                                <th scope="col">Status</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-border">
+                        <tbody>
                         @foreach ($rows as $row)
-                            <tr class="transition-colors hover:bg-muted/60">
-                                <td class="px-5 py-3">
+                            <tr>
+                                <td>
                                     <a href="{{ route('accounts.show', $row->account) }}"
                                        class="hover:underline">{{ $row->account->name }}</a>
                                     <p class="text-xs text-muted-foreground">{{ $row->account->type->label() }}</p>
                                 </td>
-                                <td class="px-5 py-3 text-right">
+                                <td class="num">
                                     <x-finance.money :amount="$row->system_balance"
                                         :tone="$row->account->isLiability() ? 'debt' : null" />
                                 </td>
-                                <td class="hidden px-5 py-3 sm:table-cell">
+                                <td class="hidden sm:table-cell">
                                     @if ($row->last)
                                         <span class="text-sm">{{ $row->last->reconciliation_date->format('d M Y') }}</span>
                                         <p class="text-xs text-muted-foreground">
@@ -57,7 +57,7 @@
                                         <span class="text-sm text-muted-foreground">never</span>
                                     @endif
                                 </td>
-                                <td class="px-5 py-3">
+                                <td>
                                     @if ($row->last)
                                         <x-ui.badge :variant="match($row->last->status) {
                                             'reconciled' => 'success',

@@ -5,12 +5,10 @@
 @section('subheading', 'Last '.$months.' months side by side')
 
 @section('actions')
-    <div class="inline-flex rounded-lg border border-border bg-muted p-0.5">
+    <div class="segmented">
         @foreach ([3, 6, 12] as $option)
             <a href="{{ route('reports.trends', ['months' => $option]) }}"
-               @if ($months === $option) aria-current="page" @endif
-               class="rounded-md px-3 py-1.5 text-sm transition-colors
-                      {{ $months === $option ? 'bg-card font-medium text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground' }}">
+               @if ($months === $option) aria-current="page" @endif>
                 {{ $option }}m
             </a>
         @endforeach
@@ -39,29 +37,29 @@
     <x-ui.card-header title="Month by month" />
     <x-ui.card-content flush>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="data-table">
                 <thead>
-                    <tr class="border-b border-border text-left">
-                        <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Month</th>
-                        <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Received</th>
-                        <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Spent</th>
-                        <th scope="col" class="hidden px-5 py-2.5 text-right text-xs font-medium text-muted-foreground sm:table-cell">On cards</th>
-                        <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Left over</th>
+                    <tr>
+                        <th scope="col">Month</th>
+                        <th scope="col" class="num">Received</th>
+                        <th scope="col" class="num">Spent</th>
+                        <th scope="col" class="hidden num sm:table-cell">On cards</th>
+                        <th scope="col" class="num">Left over</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-border">
+                <tbody>
                 @foreach ($series as $m)
-                    <tr class="transition-colors hover:bg-muted/60">
-                        <td class="px-5 py-3">
+                    <tr>
+                        <td>
                             <a href="{{ route('reports.index', ['month' => $m->month]) }}"
                                class="hover:underline">{{ $m->label }}</a>
                         </td>
-                        <td class="px-5 py-3 text-right"><x-finance.money :amount="$m->income" tone="income" /></td>
-                        <td class="px-5 py-3 text-right"><x-finance.money :amount="$m->spending" /></td>
-                        <td class="hidden px-5 py-3 text-right sm:table-cell">
+                        <td class="num"><x-finance.money :amount="$m->income" tone="income" /></td>
+                        <td class="num"><x-finance.money :amount="$m->spending" /></td>
+                        <td class="hidden num sm:table-cell">
                             <x-finance.money :amount="$m->card_spending" tone="muted" />
                         </td>
-                        <td class="px-5 py-3 text-right">
+                        <td class="num">
                             <x-finance.money :amount="$m->net" :tone="bccomp($m->net, '0', 2) === -1 ? 'expense' : 'income'" />
                         </td>
                     </tr>
@@ -77,28 +75,27 @@
     <x-ui.card-header title="Spending by category" />
     <x-ui.card-content flush>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="data-table">
                 <thead>
-                    <tr class="border-b border-border text-left">
-                        <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Category</th>
+                    <tr>
+                        <th scope="col">Category</th>
                         @foreach ($grid['months'] as $m)
-                            <th scope="col" class="px-3 py-2.5 text-right text-xs font-medium text-muted-foreground">{{ $m->short }}</th>
+                            <th scope="col" class="px-3 num">{{ $m->short }}</th>
                         @endforeach
-                        <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Total</th>
+                        <th scope="col" class="num">Total</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-border">
+                <tbody>
                 @forelse ($grid['rows'] as $row)
-                    <tr class="transition-colors hover:bg-muted/60">
-                        <td class="px-5 py-2.5 font-medium">{{ $row['label'] }}</td>
+                    <tr>
+                        <td>{{ $row['label'] }}</td>
                         @foreach ($grid['months'] as $m)
                             @php($value = $row['values'][$m->month] ?? '0.00')
-                            <td class="px-3 py-2.5 text-right tabular
-                                       {{ bccomp($value, '0', 2) === 0 ? 'text-muted-foreground' : '' }}">
+                            <td class="px-3 num tabular {{ bccomp($value, '0', 2) === 0 ? 'text-muted-foreground' : '' }}">
                                 {{ bccomp($value, '0', 2) === 0 ? '—' : \App\Support\Money::compact($value) }}
                             </td>
                         @endforeach
-                        <td class="px-5 py-2.5 text-right font-medium tabular">
+                        <td class="num tabular">
                             {{ \App\Support\Money::compact($row['total']) }}
                         </td>
                     </tr>
@@ -124,52 +121,17 @@
 @push('scripts')
 @if ($hasData)
 <script>
-new Chart(document.getElementById('trendChart'), {
-    type: 'line',
-    data: {
+document.addEventListener('DOMContentLoaded', function () {
+    // Card spending is drawn as a plain line rather than a filled area: it is
+    // a subset of "Spent", and filling it would imply a third, separate pot.
+    ftChart.area(document.getElementById('trendChart'), {
         labels: @json($series->pluck('label')),
         datasets: [
-            {
-                label: 'Received',
-                data: @json($series->pluck('income')->map(fn ($v) => (float) $v)),
-                borderColor: 'oklch(0.55 0.13 152)',
-                backgroundColor: 'oklch(0.55 0.13 152 / 0.08)',
-                fill: true, tension: 0.3, borderWidth: 2,
-                pointRadius: 3, pointHoverRadius: 5,
-            },
-            {
-                label: 'Spent',
-                data: @json($series->pluck('spending')->map(fn ($v) => (float) $v)),
-                borderColor: 'oklch(0.58 0.16 27)',
-                backgroundColor: 'oklch(0.58 0.16 27 / 0.08)',
-                fill: true, tension: 0.3, borderWidth: 2,
-                pointRadius: 3, pointHoverRadius: 5,
-            },
-            {
-                label: 'On cards',
-                data: @json($series->pluck('card_spending')->map(fn ($v) => (float) $v)),
-                borderColor: 'oklch(0.68 0.15 70)',
-                borderDash: [4, 4], fill: false, tension: 0.3, borderWidth: 2,
-                pointRadius: 0, pointHoverRadius: 4,
-            },
+            { label: 'Received', data: @json($series->pluck('income')->map(fn ($v) => (float) $v)), color: ftChart.colors.income },
+            { label: 'Spent', data: @json($series->pluck('spending')->map(fn ($v) => (float) $v)), color: ftChart.colors.expense },
+            { label: 'On cards', data: @json($series->pluck('card_spending')->map(fn ($v) => (float) $v)), color: ftChart.colors.debt, fill: false },
         ],
-    },
-    options: {
-        interaction: { mode: 'index', intersect: false },
-        scales: {
-            x: { grid: { display: false }, border: { display: false } },
-            y: {
-                beginAtZero: true,
-                border: { display: false },
-                grid: { color: 'oklch(0.923 0.005 248)' },
-                ticks: { callback: (v) => window.ftMoney(v) },
-            },
-        },
-        plugins: {
-            legend: { display: true, position: 'bottom', labels: { boxWidth: 8, boxHeight: 8, usePointStyle: true } },
-            tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + window.ftMoney(c.parsed.y) } },
-        },
-    },
+    });
 });
 </script>
 @endif

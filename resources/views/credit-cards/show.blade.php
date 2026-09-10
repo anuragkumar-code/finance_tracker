@@ -96,35 +96,35 @@
                     </x-ui.empty-state>
                 @else
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
+                        <table class="data-table">
                             <thead>
-                                <tr class="border-b border-border text-left">
-                                    <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Period</th>
-                                    <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Due</th>
-                                    <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Amount</th>
-                                    <th scope="col" class="hidden px-5 py-2.5 text-right text-xs font-medium text-muted-foreground sm:table-cell">Remaining</th>
-                                    <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
+                                <tr>
+                                    <th scope="col">Period</th>
+                                    <th scope="col">Due</th>
+                                    <th scope="col" class="num">Amount</th>
+                                    <th scope="col" class="hidden num sm:table-cell">Remaining</th>
+                                    <th scope="col">Status</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-border">
+                            <tbody>
                             @foreach ($statements as $statement)
-                                <tr class="transition-colors hover:bg-muted/60">
-                                    <td class="px-5 py-3">
+                                <tr>
+                                    <td>
                                         <a href="{{ route('credit-cards.statements.show', [$card, $statement]) }}"
                                            class="hover:underline">
                                             {{ $statement->period_start->format('d M') }} – {{ $statement->period_end->format('d M Y') }}
                                         </a>
                                     </td>
-                                    <td class="px-5 py-3 {{ $statement->isOverdue() ? 'font-medium text-destructive' : 'text-muted-foreground' }}">
+                                    <td class="{{ $statement->isOverdue() ? 'font-medium text-destructive' : 'text-muted-foreground' }}">
                                         {{ $statement->due_date->format('d M') }}
                                     </td>
-                                    <td class="px-5 py-3 text-right">
+                                    <td class="num">
                                         <x-finance.money :amount="$statement->statement_amount" />
                                     </td>
-                                    <td class="hidden px-5 py-3 text-right sm:table-cell">
+                                    <td class="hidden num sm:table-cell">
                                         <x-finance.money :amount="$statement->balanceRemaining()" tone="muted" />
                                     </td>
-                                    <td class="px-5 py-3">
+                                    <td>
                                         <x-ui.badge :variant="match($statement->status->value) {
                                             'paid' => 'success', 'overdue' => 'destructive',
                                             'partially_paid' => 'warning', default => 'default',

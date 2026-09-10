@@ -31,21 +31,17 @@
 </div>
 
 {{-- Owner filter. Everyone is the default: the app should never look like a
-     scoreboard between partners. --}}
-<div class="mt-5 flex flex-wrap items-center gap-1.5">
-    <span class="mr-1 text-xs font-medium text-muted-foreground">Whose</span>
-    <a href="{{ route('accounts.index') }}"
-       class="rounded-md border px-2.5 py-1 text-sm transition-colors
-              {{ ! $selectedOwner ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-muted' }}">
-        Everyone
-    </a>
-    @foreach ($owners as $owner)
-        <a href="{{ route('accounts.index', ['owner' => $owner->id]) }}"
-           class="rounded-md border px-2.5 py-1 text-sm transition-colors
-                  {{ $selectedOwner === $owner->id ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-muted' }}">
-            {{ $owner->name }}
-        </a>
-    @endforeach
+     scoreboard between partners. A segmented control rather than a row of
+     buttons, because exactly one of these is on at a time. --}}
+<div class="mt-5 flex flex-wrap items-center gap-2">
+    <span class="text-xs font-medium text-muted-foreground">Whose</span>
+    <div class="segmented">
+        <a href="{{ route('accounts.index') }}" @if (! $selectedOwner) aria-current="page" @endif>Everyone</a>
+        @foreach ($owners as $owner)
+            <a href="{{ route('accounts.index', ['owner' => $owner->id]) }}"
+               @if ($selectedOwner === $owner->id) aria-current="page" @endif>{{ $owner->name }}</a>
+        @endforeach
+    </div>
 </div>
 
 <div class="mt-4 space-y-4">
@@ -54,21 +50,21 @@
         <x-ui.card-header :title="$typeLabel" />
         <x-ui.card-content flush>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="data-table">
                     <thead>
-                        <tr class="border-b border-border text-left">
-                            <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Account</th>
-                            <th scope="col" class="hidden px-5 py-2.5 text-xs font-medium text-muted-foreground sm:table-cell">Whose</th>
-                            <th scope="col" class="hidden px-5 py-2.5 text-xs font-medium text-muted-foreground lg:table-cell">Institution</th>
-                            <th scope="col" class="hidden px-5 py-2.5 text-right text-xs font-medium text-muted-foreground lg:table-cell">Opening</th>
-                            <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Current</th>
-                            <th scope="col" class="w-px px-5 py-2.5"><span class="sr-only">Actions</span></th>
+                        <tr>
+                            <th scope="col">Account</th>
+                            <th scope="col" class="hidden sm:table-cell">Whose</th>
+                            <th scope="col" class="hidden lg:table-cell">Institution</th>
+                            <th scope="col" class="hidden num lg:table-cell">Opening</th>
+                            <th scope="col" class="num">Current</th>
+                            <th scope="col" class="w-px"><span class="sr-only">Actions</span></th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-border">
+                    <tbody>
                     @foreach ($group as $account)
-                        <tr class="transition-colors hover:bg-muted/60 {{ $account->is_active ? '' : 'opacity-60' }}">
-                            <td class="px-5 py-3">
+                        <tr class="{{ $account->is_active ? '' : 'opacity-60' }}">
+                            <td>
                                 <a href="{{ route('accounts.show', $account) }}"
                                    class="font-medium hover:underline">{{ $account->name }}</a>
                                 @unless ($account->is_active)
@@ -78,27 +74,27 @@
                                     since {{ $account->opening_balance_date->format('d M Y') }}
                                 </p>
                             </td>
-                            <td class="hidden px-5 py-3 sm:table-cell">
+                            <td class="hidden sm:table-cell">
                                 @if ($account->owner)
                                     <x-ui.badge variant="outline">{{ $account->owner->name }}</x-ui.badge>
                                 @else
                                     <span class="text-xs text-muted-foreground">—</span>
                                 @endif
                             </td>
-                            <td class="hidden px-5 py-3 text-muted-foreground lg:table-cell">
+                            <td class="hidden lg:table-cell">
                                 {{ $account->institution ?: '—' }}
                             </td>
-                            <td class="hidden px-5 py-3 text-right lg:table-cell">
+                            <td class="hidden num lg:table-cell">
                                 <x-finance.money :amount="$account->opening_balance" tone="muted" />
                             </td>
-                            <td class="px-5 py-3 text-right">
+                            <td class="num">
                                 <x-finance.money :amount="$account->cached_balance"
                                     :tone="$account->isLiability() ? 'debt' : 'strong'" />
                                 @if ($account->isLiability())
                                     <p class="text-[0.6875rem] text-muted-foreground">owed</p>
                                 @endif
                             </td>
-                            <td class="px-5 py-3 text-right">
+                            <td class="num">
                                 <x-ui.button :href="route('accounts.edit', $account)" variant="ghost" size="icon"
                                     aria-label="Edit {{ $account->name }}">
                                     <x-ui.icon name="pencil" class="size-4" />
@@ -136,38 +132,38 @@
             description="Not counted in any total, report or net worth" />
         <x-ui.card-content flush>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="data-table">
                     <thead>
-                        <tr class="border-b border-border text-left">
-                            <th scope="col" class="px-5 py-2.5 text-xs font-medium text-muted-foreground">Account</th>
-                            <th scope="col" class="hidden px-5 py-2.5 text-xs font-medium text-muted-foreground sm:table-cell">Whose</th>
-                            <th scope="col" class="hidden px-5 py-2.5 text-xs font-medium text-muted-foreground sm:table-cell">What for</th>
-                            <th scope="col" class="px-5 py-2.5 text-right text-xs font-medium text-muted-foreground">Balance</th>
-                            <th scope="col" class="w-px px-5 py-2.5"><span class="sr-only">Actions</span></th>
+                        <tr>
+                            <th scope="col">Account</th>
+                            <th scope="col" class="hidden sm:table-cell">Whose</th>
+                            <th scope="col" class="hidden sm:table-cell">What for</th>
+                            <th scope="col" class="num">Balance</th>
+                            <th scope="col" class="w-px"><span class="sr-only">Actions</span></th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-border">
+                    <tbody>
                     @foreach ($setAside as $account)
-                        <tr class="transition-colors hover:bg-muted/60">
-                            <td class="px-5 py-3">
+                        <tr>
+                            <td>
                                 <a href="{{ route('accounts.show', $account) }}"
                                    class="font-medium hover:underline">{{ $account->name }}</a>
                                 <p class="text-xs text-muted-foreground">{{ $account->type->label() }}</p>
                             </td>
-                            <td class="hidden px-5 py-3 sm:table-cell">
+                            <td class="hidden sm:table-cell">
                                 @if ($account->owner)
                                     <x-ui.badge variant="outline">{{ $account->owner->name }}</x-ui.badge>
                                 @else
                                     <span class="text-xs text-muted-foreground">—</span>
                                 @endif
                             </td>
-                            <td class="hidden px-5 py-3 text-muted-foreground sm:table-cell">
+                            <td class="hidden sm:table-cell">
                                 {{ $account->set_aside_reason ?: 'Set aside' }}
                             </td>
-                            <td class="px-5 py-3 text-right">
+                            <td class="num">
                                 <x-finance.money :amount="$account->cached_balance" tone="strong" />
                             </td>
-                            <td class="px-5 py-3 text-right">
+                            <td class="num">
                                 <x-ui.button :href="route('accounts.edit', $account)" variant="ghost" size="icon"
                                     aria-label="Edit {{ $account->name }}">
                                     <x-ui.icon name="pencil" class="size-4" />

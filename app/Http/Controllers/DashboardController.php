@@ -29,14 +29,38 @@ class DashboardController extends Controller
         $start = $month->copy()->startOfMonth()->toDateString();
         $end = $month->copy()->endOfMonth()->toDateString();
 
+        // Six months ending on the month being viewed. This drives both the
+        // cash-flow chart and the sparkline behind each headline figure, so
+        // they are guaranteed to be telling the same story.
+        $series = $this->reports->monthlySeries(6, $month);
+
+        // The month before the one on screen, for the "vs last month" deltas.
+        // A figure with nothing to compare it to cannot be judged.
+        $previous = $month->copy()->subMonthNoOverflow();
+        $prevStart = $previous->copy()->startOfMonth()->toDateString();
+        $prevEnd = $previous->copy()->endOfMonth()->toDateString();
+
+        $income = $this->reports->totalIncome($start, $end);
+        $spending = $this->reports->totalSpending($start, $end);
+        $cardSpending = $this->reports->creditCardSpending($start, $end);
+
         return view('dashboard', [
             'month' => $month,
             'start' => $start,
             'end' => $end,
 
-            'income' => $this->reports->totalIncome($start, $end),
-            'spending' => $this->reports->totalSpending($start, $end),
-            'cardSpending' => $this->reports->creditCardSpending($start, $end),
+            'series' => $series,
+            'previousLabel' => $previous->format('M'),
+
+            // Percentage change against last month, or null where last month
+            // was zero — "up from nothing" is not a percentage.
+            'incomeDelta' => $this->change($this->reports->totalIncome($prevStart, $prevEnd), $income),
+            'spendingDelta' => $this->change($this->reports->totalSpending($prevStart, $prevEnd), $spending),
+            'cardDelta' => $this->change($this->reports->creditCardSpending($prevStart, $prevEnd), $cardSpending),
+
+            'income' => $income,
+            'spending' => $spending,
+            'cardSpending' => $cardSpending,
             'netCashMovement' => $this->reports->netCashMovement($start, $end),
             'spendableCash' => $this->reports->spendableCash(),
             'netWorth' => $this->netWorth->summary(),
@@ -83,5 +107,25 @@ class DashboardController extends Controller
                 ->orderByDesc('id')
                 ->get(),
         ]);
+    }
+
+    /**
+     * Percentage change between two money figures.
+     *
+     * Returns null when there is nothing to compare against: a month that went
+     * from ₹0 to ₹5,000 has not risen by any percentage, and showing "+100%"
+     * or "+∞" there would be inventing a comparison the data cannot support.
+     *
+     * The division is deliberately the only place a money value becomes a
+     * float — the result is a display percentage, never an amount, and never
+     * feeds back into a balance.
+     */
+    private function change(string $before, string $after): ?float
+    {
+        if (bccomp($before, '0', 2) !== 1) {
+            return null;
+        }
+
+        return round((((float) $after - (float) $before) / (float) $before) * 100, 1);
     }
 }
