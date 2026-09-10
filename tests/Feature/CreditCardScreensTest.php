@@ -215,9 +215,13 @@ class CreditCardScreensTest extends TestCase
             statementAmount: '12000',
         );
 
+        // What is owed across every card now sits in the Balances summary, and
+        // the card with a bill falling due keeps its own panel. The wording
+        // moved; the guarantee this test exists for did not.
         $this->get('/')
             ->assertOk()
-            ->assertSee('Owed across cards')
+            ->assertSee('Owed on cards')
+            ->assertSee('Card bills due')
             ->assertSee('HDFC Regalia');
     }
 

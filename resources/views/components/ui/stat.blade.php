@@ -90,8 +90,10 @@
 
     @if ($series && count($series) > 1)
         {{-- Sat behind the text at low opacity rather than given its own row:
-             the trend is context for the number, not a second figure. --}}
-        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-9 opacity-[0.55]">
+             the trend is context for the number, not a second figure. Kept
+             faint because a run of quiet months followed by one spike draws a
+             large wedge, which at full strength competes with the figure. --}}
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-8 opacity-40">
             <canvas id="{{ $sparkId }}"></canvas>
         </div>
         @push('scripts')
