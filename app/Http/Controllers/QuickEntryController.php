@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MerchantChannel;
 use App\Enums\PlannedStatus;
 use App\Enums\Purpose;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Merchant;
+use App\Models\MerchantGroup;
 use App\Models\Person;
 use App\Services\TransactionService;
 use Illuminate\Http\JsonResponse;
@@ -57,7 +59,13 @@ class QuickEntryController extends Controller
         return response()->json($merchant->quickEntryDefaults());
     }
 
-    /** Accept either an existing merchant or a free-typed new name. */
+    /**
+     * Accept either an existing merchant or a brand-new one.
+     *
+     * The picker is a list now, but a shop you have never used before still has
+     * to be recordable without leaving the page — so a typed name and an
+     * optional group come through alongside the id.
+     */
     private function resolveMerchant(Request $request): ?int
     {
         if ($request->filled('merchant_id')) {
@@ -72,9 +80,42 @@ class QuickEntryController extends Controller
 
         $merchant = Merchant::firstOrCreate(['name' => $name]);
 
+        // A group chosen in the form wins. Failing that the name is matched
+        // against the known families, so Uber files itself under Cabs without
+        // anyone having to say so.
+        $group = null;
+
+        if ($merchant->merchant_group_id === null) {
+            $group = $request->filled('merchant_group_id')
+                ? MerchantGroup::find($request->input('merchant_group_id'))
+                : MerchantGroup::where('name', MerchantGroup::guessNameFor($name))->first();
+
+            if ($group !== null) {
+                $merchant->merchant_group_id = $group->id;
+                $merchant->save();
+            }
+        }
+
         // Blinkit typed into the box should classify itself; the household
         // should not have to remember what a channel is mid-entry.
+        //
+        // The name is asked first and the group only fills what it leaves
+        // blank. The other order looks equivalent and is not: Blinkit belongs
+        // to the E-commerce group, so taking the group's channel first would
+        // file a ten-minute delivery as online shopping and quietly empty the
+        // quick-commerce figures.
         $merchant->guessChannelIfUnset();
+
+        // Null and Offline both count as "nothing decided yet" — a merchant
+        // just created by firstOrCreate has not read the column default back,
+        // so its channel is still null in memory. This mirrors the same pair
+        // that guessChannelIfUnset() treats as an empty slot.
+        $undecided = in_array($merchant->channel, [null, MerchantChannel::Offline], true);
+
+        if ($group?->default_channel !== null && $undecided) {
+            $merchant->channel = $group->default_channel;
+            $merchant->save();
+        }
 
         return $merchant->id;
     }
@@ -115,7 +156,8 @@ class QuickEntryController extends Controller
             'categories' => Category::query()->active()->forExpenses()->topLevel()->ordered()->with('children')->get(),
             'payers' => Person::query()->active()->payers()->ordered()->get(),
             'beneficiaries' => Person::query()->active()->beneficiaries()->ordered()->get(),
-            'merchants' => Merchant::query()->active()->orderBy('name')->get(),
+            'merchants' => Merchant::query()->active()->with('group')->orderBy('name')->get(),
+            'merchantGroups' => MerchantGroup::query()->active()->ordered()->get(),
             'plannedStatuses' => PlannedStatus::cases(),
             'purposes' => Purpose::cases(),
         ];

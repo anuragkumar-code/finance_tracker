@@ -186,6 +186,9 @@
         'filterKey' => 'purpose', 'baseFilters' => $base])
     @include('reports._breakdown', ['title' => 'By subcategory', 'rows' => $bySubcategory, 'total' => $spending,
         'filterKey' => 'category_id', 'baseFilters' => $base, 'empty' => 'No subcategories used this month.'])
+    @include('reports._breakdown', ['title' => 'Kinds of place', 'rows' => $byMerchantGroup, 'total' => $spending,
+        'filterKey' => 'merchant_group_id', 'baseFilters' => $base,
+        'empty' => 'Merchants have not been filed into groups yet.'])
     @include('reports._breakdown', ['title' => 'Top merchants', 'rows' => $byMerchant, 'total' => $spending,
         'filterKey' => 'merchant_id', 'baseFilters' => $base, 'empty' => 'No merchants recorded this month.'])
 </div>

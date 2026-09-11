@@ -308,3 +308,32 @@ has its own URL and works with the back button; the sortable columns are matched
 against a fixed list in `TransactionController::applySort`, and `id` always
 breaks ties so rows cannot swap places between pages. Applied filters render as
 removable chips through `<x-ui.filter-chips>`.
+
+### Merchant groups
+
+Merchants are filed into groups — Cabs & rides, E-commerce, Food delivery — which
+is what makes the quick-entry picker a grouped, searchable list rather than one
+long alphabetical run. The groups are seeded by
+`2026_09_11_090000_create_merchant_groups_table` and curated under
+Settings → Merchants.
+
+A group is not a channel. The group says what kind of place it is; the channel
+says how you buy from it, and only the channel drives the quick-commerce
+figures. Blinkit sits in the E-commerce group and still counts as quick
+commerce — which is the whole reason the two are separate columns. When a new
+merchant is created, the name is consulted for a channel first and the group's
+default only fills what the name left blank; reversing that order silently
+reclassifies every quick-commerce merchant.
+
+Filing existing merchants is a reviewable command rather than part of the
+migration, because deciding that "Thar Retraunt" is a restaurant is a guess
+about real data:
+
+```bash
+php artisan merchants:group             # dry run — prints the proposal, writes nothing
+php artisan merchants:group --apply     # write it
+php artisan merchants:group --regroup --apply   # also re-file merchants already grouped
+```
+
+Names that match no rule are left ungrouped rather than swept into "Other": an
+empty cell asks to be filled in, a wrong label does not.

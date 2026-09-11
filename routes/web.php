@@ -16,6 +16,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UpcomingController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\MerchantController;
+use App\Http\Controllers\Settings\MerchantGroupController;
 use App\Http\Controllers\Settings\PersonController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
@@ -147,4 +148,9 @@ Route::prefix('settings')->name('settings.')->group(function () {
     Route::post('/merchants', [MerchantController::class, 'store'])->name('merchants.store');
     Route::put('/merchants/{merchant}', [MerchantController::class, 'update'])->name('merchants.update');
     Route::delete('/merchants/{merchant}', [MerchantController::class, 'destroy'])->name('merchants.destroy');
+
+    // The group master behind the merchant picker.
+    Route::post('/merchant-groups', [MerchantGroupController::class, 'store'])->name('merchant-groups.store');
+    Route::put('/merchant-groups/{group}', [MerchantGroupController::class, 'update'])->name('merchant-groups.update');
+    Route::delete('/merchant-groups/{group}', [MerchantGroupController::class, 'destroy'])->name('merchant-groups.destroy');
 });

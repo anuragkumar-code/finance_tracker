@@ -15,6 +15,7 @@ class Merchant extends Model
 
     protected $fillable = [
         'name',
+        'merchant_group_id',
         'channel',
         'default_category_id',
         'default_subcategory_id',
@@ -30,6 +31,11 @@ class Merchant extends Model
             'is_active' => 'boolean',
             'channel' => MerchantChannel::class,
         ];
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(MerchantGroup::class, 'merchant_group_id');
     }
 
     public function defaultCategory(): BelongsTo

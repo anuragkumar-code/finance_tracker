@@ -99,27 +99,11 @@
 
         <x-ui.card>
             <x-ui.card-content class="space-y-5">
-                <div>
-                    <label for="merchantName" class="block text-sm font-medium">Where did you buy it?</label>
-                    <div class="relative mt-1.5">
-                        <x-ui.icon name="store"
-                            class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <input type="text" name="merchant_name" id="merchantName" list="merchantList"
-                               value="{{ old('merchant_name') }}" autocomplete="off"
-                               placeholder="Blinkit, Amazon, the shop down the road…"
-                               class="h-10 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm
-                                      placeholder:text-muted-foreground focus:border-ring focus:outline-none
-                                      focus:ring-2 focus:ring-ring/25">
-                    </div>
-                    <input type="hidden" name="merchant_id" id="merchantId" value="{{ old('merchant_id') }}">
-                    <datalist id="merchantList">
-                        @foreach ($merchants as $merchant)
-                            <option value="{{ $merchant->name }}"></option>
-                        @endforeach
-                    </datalist>
+                <div x-on:merchant-chosen="window.ftApplyMerchantDefaults($event.detail.id)">
+                    <x-ui.merchant-picker :merchants="$merchants" :groups="$merchantGroups" />
                     <p class="mt-1.5 text-xs text-muted-foreground" id="merchantHint">
-                        Names like Blinkit or Amazon sort themselves into quick commerce and
-                        online shopping, so those reports fill in on their own.
+                        Picking a merchant fills in what it usually is — category, account,
+                        who paid — from the last time you bought there.
                     </p>
                 </div>
 
@@ -307,13 +291,12 @@
         }
     });
 
-    // Merchant memory: a known name fills in what it usually is.
-    const merchantsByName = @json($merchants->mapWithKeys(fn ($m) => [strtolower($m->name) => $m->id]));
-    const merchantName = document.getElementById('merchantName');
-    const merchantId = document.getElementById('merchantId');
+    // Merchant memory: choosing a merchant fills in what it usually is.
+    // Exposed on window because the picker is an Alpine component that
+    // announces its choice by event rather than reaching into this script.
     const merchantHint = document.getElementById('merchantHint');
 
-    function applyDefaults(id) {
+    window.ftApplyMerchantDefaults = function applyDefaults(id) {
         fetch('{{ url('merchants') }}/' + id + '/defaults', { headers: { 'Accept': 'application/json' } })
             .then((r) => r.json())
             .then((d) => {
@@ -343,13 +326,7 @@
                 }
             })
             .catch(() => {});
-    }
-
-    ['change', 'blur'].forEach((evt) => merchantName.addEventListener(evt, () => {
-        const id = merchantsByName[merchantName.value.trim().toLowerCase()];
-        merchantId.value = id || '';
-        if (id) applyDefaults(id);
-    }));
+    };
 })();
 </script>
 @endpush

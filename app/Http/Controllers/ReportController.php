@@ -56,6 +56,7 @@ class ReportController extends Controller
             'byCategory' => $this->reports->byCategory($start, $end),
             'bySubcategory' => $this->reports->bySubcategory($start, $end),
             'byMerchant' => $this->reports->byMerchant($start, $end),
+            'byMerchantGroup' => $this->reports->byMerchantGroup($start, $end),
             'byPayer' => $this->reports->groupedBy('payer_id', $start, $end),
             'byBeneficiary' => $this->reports->groupedBy('beneficiary_id', $start, $end),
             'byAccount' => $this->reports->groupedBy('account_id', $start, $end),

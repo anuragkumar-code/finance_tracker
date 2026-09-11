@@ -11,6 +11,7 @@ use App\Http\Requests\StoreTransferRequest;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Merchant;
+use App\Models\MerchantGroup;
 use App\Models\Person;
 use App\Models\Transaction;
 use App\Services\TransactionService;
@@ -54,6 +55,7 @@ class TransactionController extends Controller
             'categories' => Category::active()->ordered()->get(),
             'people' => Person::active()->ordered()->get(),
             'merchants' => Merchant::active()->orderBy('name')->get(),
+            'merchantGroups' => MerchantGroup::query()->ordered()->get(),
             'types' => TransactionType::cases(),
             'plannedStatuses' => PlannedStatus::cases(),
             'purposes' => Purpose::cases(),
@@ -230,6 +232,13 @@ class TransactionController extends Controller
             ->when($request->filled('payer_id'), fn ($q) => $q->where('payer_id', $request->input('payer_id')))
             ->when($request->filled('beneficiary_id'), fn ($q) => $q->where('beneficiary_id', $request->input('beneficiary_id')))
             ->when($request->filled('merchant_id'), fn ($q) => $q->where('merchant_id', $request->input('merchant_id')))
+            // Drilling in from the "kinds of place" report. Expressed as a
+            // subquery on merchants rather than a join so it composes with
+            // every other filter without duplicating rows.
+            ->when($request->filled('merchant_group_id'), fn ($q) => $q->whereHas(
+                'merchant',
+                fn ($m) => $m->where('merchant_group_id', $request->input('merchant_group_id'))
+            ))
             ->when($request->filled('planned_status'), fn ($q) => $q->where('planned_status', $request->input('planned_status')))
             ->when($request->filled('purpose'), fn ($q) => $q->where('purpose', $request->input('purpose')))
             ->when($request->filled('min_amount'), fn ($q) => $q->where('amount', '>=', $request->input('min_amount')))

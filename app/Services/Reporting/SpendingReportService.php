@@ -257,6 +257,39 @@ class SpendingReportService
     }
 
     /**
+     * Spending by merchant group — cabs, e-commerce, food delivery.
+     *
+     * Categories answer what was bought; this answers what kind of place it was
+     * bought from. They are not the same question: a cab and a flight are both
+     * "Travel", but only one of them is a daily habit worth watching.
+     *
+     * Merchants with no group, and entries with no merchant at all, are left
+     * out rather than bundled into an "Other" bar — a total that mixes "we
+     * spend this on cabs" with "we did not say" is not worth reading.
+     *
+     * @return Collection<int, object{label: string, key: int, amount: string, count: int}>
+     */
+    public function byMerchantGroup(string $start, string $end): Collection
+    {
+        return Transaction::query()
+            ->spending()
+            ->inPeriod($start, $end)
+            ->join('merchants', 'merchants.id', '=', 'transactions.merchant_id')
+            ->join('merchant_groups', 'merchant_groups.id', '=', 'merchants.merchant_group_id')
+            ->selectRaw('merchant_groups.name AS label, merchant_groups.id AS group_id,
+                         SUM(transactions.amount) AS amount, COUNT(*) AS entries')
+            ->groupBy('merchant_groups.id', 'merchant_groups.name')
+            ->orderByDesc('amount')
+            ->get()
+            ->map(fn ($row) => (object) [
+                'label' => $row->label,
+                'key' => (int) $row->group_id,
+                'amount' => $this->decimal($row->amount),
+                'count' => (int) $row->entries,
+            ]);
+    }
+
+    /**
      * Spending split into weeks inside one month (spec section 19B).
      *
      * Calendar weeks (1st–7th, 8th–14th, …) rather than ISO weeks, so "Week 1"

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Merchant;
+use App\Models\MerchantGroup;
 use App\Models\Person;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,10 +18,11 @@ class MerchantController extends Controller
     {
         return view('settings.merchants', [
             'merchants' => Merchant::query()
-                ->with(['defaultCategory', 'defaultAccount', 'defaultBeneficiary'])
+                ->with(['group', 'defaultCategory', 'defaultAccount', 'defaultBeneficiary'])
                 ->withCount('transactions')
                 ->orderBy('name')
                 ->get(),
+            'groups' => MerchantGroup::query()->ordered()->withCount('merchants')->get(),
             'categories' => Category::query()->active()->ordered()->get(),
             'channels' => \App\Enums\MerchantChannel::cases(),
             'accounts' => Account::query()->active()->orderBy('name')->get(),
@@ -60,6 +62,7 @@ class MerchantController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:150', 'unique:merchants,name'.($merchant ? ','.$merchant->id : '')],
+            'merchant_group_id' => ['nullable', 'exists:merchant_groups,id'],
             'channel' => ['nullable', new \Illuminate\Validation\Rules\Enum(\App\Enums\MerchantChannel::class)],
             'default_category_id' => ['nullable', 'exists:categories,id'],
             'default_subcategory_id' => ['nullable', 'exists:categories,id'],
