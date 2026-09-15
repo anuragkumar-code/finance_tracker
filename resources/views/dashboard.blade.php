@@ -83,12 +83,11 @@
                         $pct = min(100, (int) $alert->used_percent);
                         $over = $alert->status === 'over';
 
-                        // Worked out here rather than inline in the attribute.
-                        // Blade's component tag compiler parses attributes with a
-                        // regex, and a ternary carrying its own colons inside a
-                        // :bound attribute can make it give up on the tag — which
-                        // it does silently, emitting the literal <x-ui.badge> and
-                        // leaving the surrounding component tree unbalanced.
+                        // Block @php only in this file, never the inline @php(...)
+                        // form: Blade pairs an inline @php( with the next @endphp
+                        // and swallows everything between them uncompiled, which
+                        // either fails as "unexpected end of file" or renders the
+                        // page scrambled with no error at all.
                         $alertVariant = $over ? 'destructive' : 'warning';
                         $alertLabel = $over ? 'Over budget' : 'Spending fast';
                         $alertBar = $over ? 'bg-destructive' : 'bg-warning';
@@ -228,7 +227,9 @@
                         </div>
                         <ul class="space-y-0.5">
                             @foreach ($byCategory->take(7) as $i => $row)
-                                @php($share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0)
+                                @php
+                                    $share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0;
+                                @endphp
                                 <li>
                                     <a href="{{ route('transactions.index', ['start' => $start, 'end' => $end, 'type' => 'expense', 'category_id' => $row->category_id]) }}"
                                        class="group flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted">
@@ -456,6 +457,38 @@
             </x-ui.card-footer>
         </x-ui.card>
 
+        @if ($friendBalances->isNotEmpty())
+            <x-ui.card>
+                <x-ui.card-header title="Friends" description="Still to be squared up">
+                    <x-slot:action>
+                        <a href="{{ route('friends.index') }}"
+                           class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+                            All <x-ui.icon name="chevron-right" class="size-3.5" />
+                        </a>
+                    </x-slot:action>
+                </x-ui.card-header>
+                <x-ui.card-content flush>
+                    <ul class="divide-y divide-border">
+                        @foreach ($friendBalances as $row)
+                            @php
+                                $owesUs = bccomp($row->balance, '0', 2) === 1;
+                                $friendAmount = $owesUs ? $row->balance : bcsub('0', $row->balance, 2);
+                                $friendTone = $owesUs ? 'income' : 'debt';
+                                $friendText = $owesUs ? 'owes you' : 'you owe';
+                            @endphp
+                            <li class="flex items-center justify-between gap-3 px-5 py-2.5">
+                                <span class="min-w-0 truncate text-sm">
+                                    {{ $row->person->name }}
+                                    <span class="text-xs text-muted-foreground">{{ $friendText }}</span>
+                                </span>
+                                <x-finance.money :amount="$friendAmount" :tone="$friendTone" class="text-sm" />
+                            </li>
+                        @endforeach
+                    </ul>
+                </x-ui.card-content>
+            </x-ui.card>
+        @endif
+
         {{-- Only when a bill is actually due. What is owed across cards already
              appears in Balances above, so with no dues this panel would be
              repeating a figure the reader has just passed. --}}
@@ -497,7 +530,9 @@
                                   font-semibold uppercase tracking-wider text-subtle">Planned vs unplanned</p>
                         <ul class="divide-y divide-border">
                             @foreach ($byPlanned as $row)
-                                @php($share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0)
+                                @php
+                                    $share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0;
+                                @endphp
                                 <li>
                                     <a href="{{ route('transactions.index', ['start' => $start, 'end' => $end, 'planned_status' => $row->key, 'type' => 'expense']) }}"
                                        class="flex items-center gap-3 px-5 py-2 transition-colors hover:bg-muted">
@@ -515,7 +550,9 @@
                                   font-semibold uppercase tracking-wider text-subtle">Who paid</p>
                         <ul class="divide-y divide-border">
                             @foreach ($byPayer as $row)
-                                @php($share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0)
+                                @php
+                                    $share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0;
+                                @endphp
                                 <li>
                                     <a href="{{ route('transactions.index', ['start' => $start, 'end' => $end, 'payer_id' => $row->key, 'type' => 'expense']) }}"
                                        class="flex items-center gap-3 px-5 py-2 transition-colors hover:bg-muted">

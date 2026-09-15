@@ -159,6 +159,129 @@
                 </div>
             </x-ui.card-content>
         </x-ui.card>
+
+        @php
+            // Arriving from a trip page's "Add a spend" picks that trip; otherwise the
+            // trip happening today, if there is one.
+            $selectedEventId = old('event_id', request()->query('event', $currentEvent?->id));
+            $splitOpen = old('split_person_id') ? 'true' : 'false';
+        @endphp
+
+        {{--
+            Trips and shared bills.
+
+            The trip happening today is pre-selected, because on holiday every
+            spend belongs to it and choosing it each time is the step that gets
+            skipped. Splitting is folded away: most spends are not shared, and
+            the ones that are should not make every other entry longer.
+        --}}
+        <x-ui.card x-data="{ split: {{ $splitOpen }}, amount: '', share: '{{ old('split_amount') }}' }"
+                   x-init="$watch('split', v => { if (!v) share = '' })"
+                   x-on:input.window="if ($event.target.id === 'amount') amount = $event.target.value">
+            <x-ui.card-content class="space-y-4">
+                <div>
+                    <label for="eventId" class="block text-sm font-medium">
+                        Part of a trip or event? <span class="font-normal text-muted-foreground">· optional</span>
+                    </label>
+
+                    @if ($events->isEmpty())
+                        <p class="mt-1.5 text-sm text-muted-foreground">
+                            Going somewhere?
+                            <a href="{{ route('events.create') }}" class="font-medium text-foreground underline underline-offset-2">
+                                Create the trip
+                            </a>
+                            and every spend during it can be filed under it.
+                        </p>
+                    @else
+                        <select name="event_id" id="eventId"
+                                class="mt-1.5 h-10 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs
+                                       focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25">
+                            <option value="">Not part of one</option>
+                            @foreach ($events as $event)
+                                <option value="{{ $event->id }}" @selected((string) $selectedEventId === (string) $event->id)>
+                                    {{ $event->name }} · {{ $event->dateRange() }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @if ($currentEvent)
+                            <p class="mt-1.5 text-xs text-muted-foreground">
+                                Picked because you are on <span class="text-foreground">{{ $currentEvent->name }}</span> today.
+                            </p>
+                        @endif
+                        @error('event_id')
+                            <p class="mt-1.5 text-xs text-destructive">{{ $message }}</p>
+                        @enderror
+                    @endif
+                </div>
+
+                <div class="border-t border-border pt-4">
+                    <label class="flex cursor-pointer items-start gap-3">
+                        <input type="checkbox" x-model="split"
+                               class="mt-0.5 size-4 rounded border-input text-primary focus:ring-ring/25">
+                        <span>
+                            <span class="block text-sm font-medium">Split this with a friend</span>
+                            <span class="block text-xs text-muted-foreground">
+                                You paid the whole bill, part of it was theirs. Only your share counts as spending.
+                            </span>
+                        </span>
+                    </label>
+
+                    <div x-show="split" x-cloak class="mt-3 grid gap-3 sm:grid-cols-2">
+                        @if ($friends->isEmpty())
+                            <p class="text-sm text-muted-foreground sm:col-span-2">
+                                <a href="{{ route('friends.index') }}" class="font-medium text-foreground underline underline-offset-2">Add the friend</a>
+                                first — friends are kept apart from the household so they never show up as "who paid".
+                            </p>
+                        @else
+                            <div>
+                                <label for="splitPerson" class="block text-xs font-medium text-muted-foreground">With</label>
+                                <select name="split_person_id" id="splitPerson" x-bind:disabled="!split"
+                                        class="mt-1 h-9 w-full rounded-md border border-input bg-card px-3 text-sm
+                                               focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25">
+                                    <option value="">Choose…</option>
+                                    @foreach ($friends as $friend)
+                                        <option value="{{ $friend->id }}" @selected(old('split_person_id') == $friend->id)>{{ $friend->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <label for="splitAmount" class="block text-xs font-medium text-muted-foreground">Their share</label>
+                                    <button type="button"
+                                            x-on:click="share = amount ? (Math.round(parseFloat(amount) * 50) / 100).toFixed(2) : share"
+                                            class="text-xs font-medium text-muted-foreground hover:text-foreground">
+                                        Half
+                                    </button>
+                                </div>
+                                <div class="relative mt-1">
+                                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">₹</span>
+                                    <input type="text" inputmode="decimal" name="split_amount" id="splitAmount"
+                                           x-model="share" x-bind:disabled="!split" autocomplete="off"
+                                           class="h-9 w-full rounded-md border border-input bg-card pl-7 pr-3 text-sm tabular
+                                                  focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25">
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-muted-foreground sm:col-span-2"
+                               x-show="amount && share && parseFloat(share) < parseFloat(amount)">
+                                Your share:
+                                <span class="font-medium text-foreground tabular"
+                                      x-text="'₹' + (parseFloat(amount) - parseFloat(share)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })"></span>
+                                — the rest is added to what they owe you.
+                            </p>
+                        @endif
+
+                        @error('split_amount')
+                            <p class="text-xs text-destructive sm:col-span-2">{{ $message }}</p>
+                        @enderror
+                        @error('split_person_id')
+                            <p class="text-xs text-destructive sm:col-span-2">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </x-ui.card-content>
+        </x-ui.card>
     </div>
 
     <div class="space-y-4 lg:col-span-4">
@@ -279,6 +402,29 @@
 
     const initial = document.querySelector('input[name="category_id"]:checked');
     if (initial) renderSubcategories(initial.value);
+
+    // A trip's spends go under Holiday unless something else was chosen, so
+    // the trip's whole cost lands in one category rather than inflating Food.
+    // Fills a blank only — a category picked by hand is never overruled.
+    const holidayId = @json($holidayCategoryId);
+    const eventKinds = @json($events->mapWithKeys(fn ($e) => [$e->id => $e->kind->value]));
+    const eventSelect = document.getElementById('eventId');
+
+    function suggestHoliday() {
+        if (!holidayId || !eventSelect || eventKinds[eventSelect.value] !== 'trip') return;
+        if (document.querySelector('input[name="category_id"]:checked')) return;
+
+        const chip = document.querySelector('input[name="category_id"][value="' + holidayId + '"]');
+        if (!chip) return;
+
+        chip.checked = true;
+        renderSubcategories(holidayId);
+    }
+
+    if (eventSelect) {
+        eventSelect.addEventListener('change', suggestHoliday);
+        suggestHoliday();
+    }
 
     // Choosing an account suggests who paid. Fills a blank only — either partner
     // can pay from a joint account, so it must never overrule a real choice.

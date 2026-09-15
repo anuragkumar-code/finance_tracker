@@ -10,6 +10,7 @@ use App\Http\Requests\StoreIncomeRequest;
 use App\Http\Requests\StoreTransferRequest;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\Event;
 use App\Models\Merchant;
 use App\Models\MerchantGroup;
 use App\Models\Person;
@@ -56,6 +57,7 @@ class TransactionController extends Controller
             'people' => Person::active()->ordered()->get(),
             'merchants' => Merchant::active()->orderBy('name')->get(),
             'merchantGroups' => MerchantGroup::query()->ordered()->get(),
+            'events' => Event::query()->latestFirst()->get(),
             'types' => TransactionType::cases(),
             'plannedStatuses' => PlannedStatus::cases(),
             'purposes' => Purpose::cases(),
@@ -65,7 +67,10 @@ class TransactionController extends Controller
 
     public function show(Transaction $transaction): View
     {
-        $transaction->load(['account', 'category', 'subcategory', 'merchant', 'payer', 'beneficiary', 'splits', 'tags']);
+        $transaction->load([
+            'account.person', 'category', 'subcategory', 'merchant', 'payer', 'beneficiary', 'splits', 'tags',
+            'event', 'settlement.person', 'settlement.event', 'shareAllocations.settlement.person',
+        ]);
 
         return view('transactions.show', [
             'transaction' => $transaction,
@@ -105,9 +110,21 @@ class TransactionController extends Controller
 
     public function edit(Transaction $transaction): View
     {
-        return view('transactions.edit', $this->formData() + [
+        $data = $this->formData();
+        $counterpart = $transaction->counterpartLeg();
+
+        // The picker offers only the household's own accounts, but an entry can
+        // sit on a friend's balance (a write-off, a repayment). Its current
+        // accounts must stay selectable, or saving would quietly move it onto
+        // whichever account happens to be listed first.
+        $current = collect([$transaction->account, $counterpart?->account])->filter();
+        $data['accounts'] = $data['accounts']
+            ->concat($current->reject(fn ($a) => $data['accounts']->contains('id', $a->id)))
+            ->values();
+
+        return view('transactions.edit', $data + [
             'transaction' => $transaction,
-            'counterpart' => $transaction->counterpartLeg(),
+            'counterpart' => $counterpart,
         ]);
     }
 
@@ -135,6 +152,7 @@ class TransactionController extends Controller
                     'payer_id' => ['nullable', 'exists:people,id'],
                     'beneficiary_id' => ['nullable', 'exists:people,id'],
                     'merchant_id' => ['nullable', 'exists:merchants,id'],
+                    'event_id' => ['nullable', 'exists:events,id'],
                     'planned_status' => ['nullable', 'string'],
                     'purpose' => ['nullable', 'string'],
                     'description' => ['nullable', 'string', 'max:255'],
@@ -164,7 +182,13 @@ class TransactionController extends Controller
             'void_reason.required' => 'Please say why this entry is being removed.',
         ]);
 
-        $this->transactions->void($transaction, $data['void_reason']);
+        try {
+            $this->transactions->void($transaction, $data['void_reason']);
+        } catch (\RuntimeException $e) {
+            // A settled entry refuses to be voided on its own; say why rather
+            // than failing the request.
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()
             ->route('transactions.index')
@@ -175,7 +199,11 @@ class TransactionController extends Controller
     {
         $transaction = Transaction::withTrashed()->findOrFail($id);
 
-        $this->transactions->restore($transaction);
+        try {
+            $this->transactions->restore($transaction);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()
             ->route('transactions.show', $transaction)
@@ -232,6 +260,7 @@ class TransactionController extends Controller
             ->when($request->filled('payer_id'), fn ($q) => $q->where('payer_id', $request->input('payer_id')))
             ->when($request->filled('beneficiary_id'), fn ($q) => $q->where('beneficiary_id', $request->input('beneficiary_id')))
             ->when($request->filled('merchant_id'), fn ($q) => $q->where('merchant_id', $request->input('merchant_id')))
+            ->when($request->filled('event_id'), fn ($q) => $q->where('event_id', $request->input('event_id')))
             // Drilling in from the "kinds of place" report. Expressed as a
             // subquery on merchants rather than a join so it composes with
             // every other filter without duplicating rows.
@@ -257,7 +286,8 @@ class TransactionController extends Controller
     private function formData(): array
     {
         return [
-            'accounts' => Account::query()->active()->with('owner')->orderBy('name')->get(),
+            'accounts' => Account::query()->active()->own()->with('owner')->orderBy('name')->get(),
+            'events' => Event::query()->latestFirst()->get(),
             'categories' => Category::query()->active()->topLevel()->ordered()->with('children')->get(),
             'incomeCategories' => Category::query()->active()->forIncome()->ordered()->get(),
             'payers' => Person::query()->active()->payers()->ordered()->get(),

@@ -435,7 +435,9 @@ class SpendingReportService
                 ->where('normal_balance', NormalBalance::Asset->value)
                 // A transfer into the emergency fund should read as money
                 // leaving, not as an internal move that nets to zero.
-                ->where('is_set_aside', false));
+                ->where('is_set_aside', false)
+                // A share moved to a friend's balance is not cash arriving anywhere.
+                ->whereNull('person_id'));
     }
 
     /** @return array<int|string, string> */

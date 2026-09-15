@@ -17,9 +17,7 @@
         ->filter(fn ($name) => $byGroup->has($name))
         ->values();
 
-    // Channel badge styling, worked out here rather than inline in the
-    // attribute: a ternary inside a :bound attribute can make Blade's component
-    // compiler give up on the tag silently.
+    // Channel badge styling, kept out of the attribute for readability.
     $channelVariant = fn ($channel) => match ($channel?->value) {
         'quick_commerce' => 'destructive',
         'ecommerce' => 'default',

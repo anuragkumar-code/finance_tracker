@@ -35,6 +35,7 @@
             ['route' => 'quick-entry', 'label' => 'Quick Entry', 'icon' => 'zap', 'match' => 'quick-entry'],
             ['route' => 'transactions.index', 'label' => 'Transactions', 'icon' => 'arrow-left-right', 'match' => 'transactions.*'],
             ['route' => 'upcoming.index', 'label' => 'Upcoming', 'icon' => 'calendar-clock', 'match' => 'upcoming.*'],
+            ['route' => 'events.index', 'label' => 'Trips & events', 'icon' => 'plane', 'match' => 'events.*'],
         ],
         'Money' => [
             ['route' => 'accounts.index', 'label' => 'Accounts', 'icon' => 'wallet', 'match' => 'accounts.*'],
@@ -42,6 +43,7 @@
             ['route' => 'loans.index', 'label' => 'Loans', 'icon' => 'landmark', 'match' => 'loans.*'],
             ['route' => 'recurring.index', 'label' => 'Recurring', 'icon' => 'repeat', 'match' => 'recurring.*'],
             ['route' => 'assets.index', 'label' => 'Assets', 'icon' => 'building-2', 'match' => 'assets.*'],
+            ['route' => 'friends.index', 'label' => 'Friends', 'icon' => 'hand-coins', 'match' => 'friends.*'],
         ],
         'Analytics' => [
             ['route' => 'reports.index', 'label' => 'Reports', 'icon' => 'chart-line', 'match' => 'reports.*'],
@@ -69,6 +71,8 @@
             ['label' => 'Record income', 'group' => 'Actions', 'icon' => 'trending-up', 'url' => route('transactions.create', ['type' => 'income'])],
             ['label' => 'Move money between accounts', 'group' => 'Actions', 'icon' => 'arrow-left-right', 'url' => route('transactions.create', ['type' => 'transfer'])],
             ['label' => 'Add an account', 'group' => 'Actions', 'icon' => 'wallet', 'url' => route('accounts.create')],
+            ['label' => 'Plan a trip or event', 'group' => 'Actions', 'icon' => 'plane', 'url' => route('events.create')],
+            ['label' => 'Record a friend paying you back', 'group' => 'Actions', 'icon' => 'hand-coins', 'url' => route('friends.index')],
             ['label' => 'Trends over time', 'group' => 'Actions', 'icon' => 'chart-line', 'url' => route('reports.trends')],
             ['label' => 'Net worth', 'group' => 'Actions', 'icon' => 'scale', 'url' => route('reports.net-worth')],
             ['label' => 'Export transactions as CSV', 'group' => 'Actions', 'icon' => 'download', 'url' => route('export.transactions')],

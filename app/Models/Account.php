@@ -19,6 +19,7 @@ class Account extends Model
         'type',
         'institution',
         'owner_id',
+        'person_id',
         'normal_balance',
         'opening_balance',
         'opening_balance_date',
@@ -118,6 +119,34 @@ class Account extends Model
         return $query->whereIn('type', [AccountType::Bank->value, AccountType::Cash->value]);
     }
 
+    /**
+     * The household's own accounts — everything except the balances kept for
+     * friends.
+     *
+     * A friend's balance is a real account so that what they owe is derived by
+     * the same arithmetic as everything else, but it is not somewhere the
+     * household keeps money: it must not be offered as an account to pay from,
+     * listed among balances, or reconciled against a statement.
+     *
+     * Deliberately a scope applied where accounts are listed, and not a global
+     * scope. The balance service and every $transaction->account lookup must
+     * still see these accounts, or entries against them would vanish.
+     */
+    public function scopeOwn(Builder $query): Builder
+    {
+        return $query->whereNull('person_id');
+    }
+
+    public function person(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Person::class, 'person_id');
+    }
+
+    public function isFriendBalance(): bool
+    {
+        return $this->person_id !== null;
+    }
+
     public function scopeSetAside(Builder $query): Builder
     {
         return $query->where('is_set_aside', true);
@@ -134,7 +163,9 @@ class Account extends Model
      */
     public function scopeCounted(Builder $query): Builder
     {
-        return $query->where("is_set_aside", false);
+        // A friend's balance is not the household's money either: what Rahul
+        // owes for a trip is not something the household holds or can spend.
+        return $query->where('is_set_aside', false)->whereNull('person_id');
     }
 
     public function scopeAssets(Builder $query): Builder

@@ -67,6 +67,7 @@
                         'Paid by' => $transaction->payer?->name,
                         'For' => $transaction->beneficiary?->name,
                         'Purpose' => $transaction->purpose?->label(),
+                        'Trip or event' => $transaction->event?->name,
                     ] as $label => $value)
                         <div>
                             <dt class="text-xs text-muted-foreground">{{ $label }}</dt>
@@ -78,9 +79,13 @@
                         <dt class="text-xs text-muted-foreground">Planned</dt>
                         <dd class="mt-0.5">
                             @if ($transaction->planned_status)
-                                <x-ui.badge :variant="match($transaction->planned_status->value) {
-                                    'planned' => 'success', 'emergency' => 'destructive', default => 'warning',
-                                }">{{ $transaction->planned_status->label() }}</x-ui.badge>
+                                @php
+                                    // Kept out of the :variant attribute for readability.
+                                    $plannedVariant = match ($transaction->planned_status->value) {
+                                        'planned' => 'success', 'emergency' => 'destructive', default => 'warning',
+                                    };
+                                @endphp
+                                <x-ui.badge :variant="$plannedVariant">{{ $transaction->planned_status->label() }}</x-ui.badge>
                             @else
                                 <span class="text-sm">—</span>
                             @endif
@@ -103,9 +108,18 @@
             <x-ui.card>
                 <x-ui.card-header title="The other side of this move" />
                 <x-ui.card-content>
+                    @php
+                        $friendSide = collect([$transaction->account, $counterpart->account])
+                            ->first(fn ($a) => $a->isFriendBalance());
+                    @endphp
                     <p class="text-sm text-muted-foreground">
-                        A {{ strtolower($transaction->type->label()) }} between your own accounts, recorded
-                        as two linked entries. It is not counted as spending.
+                        @if ($friendSide)
+                            Money moving between your account and what {{ $friendSide->name }} owes. It is
+                            neither spending nor income — it only changes who owes whom.
+                        @else
+                            A {{ strtolower($transaction->type->label()) }} between your own accounts, recorded
+                            as two linked entries. It is not counted as spending.
+                        @endif
                     </p>
                     <div class="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
                         <div class="min-w-0">
@@ -115,6 +129,64 @@
                         </div>
                         <x-finance.money :amount="$counterpart->amount" class="text-sm" />
                     </div>
+                </x-ui.card-content>
+            </x-ui.card>
+        @endif
+
+        @php
+            $movedShares = $transaction->shareAllocations;
+            $movedTotal = $movedShares->reduce(fn ($c, $a) => bcadd($c, (string) $a->reduced_by, 2), '0.00');
+            $paidInFull = bcadd((string) $transaction->amount, $movedTotal, 2);
+        @endphp
+
+        @if ($movedShares->isNotEmpty())
+            <x-ui.card>
+                <x-ui.card-header title="Shared with friends" />
+                <x-ui.card-content class="space-y-3">
+                    <p class="text-sm text-muted-foreground">
+                        You paid {{ \App\Support\Money::inr($paidInFull) }}. The friends' shares below were moved to
+                        what they owe you, so only {{ \App\Support\Money::inr($transaction->amount) }} counts as your spending.
+                    </p>
+                    <ul class="divide-y divide-border border-t border-border">
+                        @foreach ($movedShares as $allocation)
+                            <li class="flex items-center justify-between gap-3 py-2 text-sm">
+                                <span>{{ $allocation->settlement->person->name }}'s share</span>
+                                <x-finance.money :amount="$allocation->reduced_by" tone="income" />
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if ($transaction->event)
+                        <x-ui.button :href="route('events.show', $transaction->event)" variant="outline" size="sm">
+                            Undo from the trip page
+                        </x-ui.button>
+                    @else
+                        @foreach ($movedShares->pluck('settlement')->unique('id') as $settlement)
+                            <form method="POST" action="{{ route('settlements.undo', $settlement) }}">
+                                @csrf
+                                @method('DELETE')
+                                <x-ui.button type="submit" variant="outline" size="sm" icon="undo-2">
+                                    Undo split with {{ $settlement->person->name }}
+                                </x-ui.button>
+                            </form>
+                        @endforeach
+                    @endif
+                </x-ui.card-content>
+            </x-ui.card>
+        @endif
+
+        @if ($transaction->isSettlementEntry() && $transaction->settlement)
+            <x-ui.card>
+                <x-ui.card-header title="Written by settling up" />
+                <x-ui.card-content class="space-y-3 text-sm text-muted-foreground">
+                    <p>
+                        This entry exists because a shared cost with {{ $transaction->settlement->person->name }}
+                        was settled. It is removed by undoing that settlement, not by editing it.
+                    </p>
+                    @if ($transaction->settlement->event)
+                        <x-ui.button :href="route('events.show', $transaction->settlement->event)" variant="outline" size="sm">
+                            Open {{ $transaction->settlement->event->name }}
+                        </x-ui.button>
+                    @endif
                 </x-ui.card-content>
             </x-ui.card>
         @endif

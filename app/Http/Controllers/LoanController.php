@@ -68,7 +68,7 @@ class LoanController extends Controller
                 ->where('status', \App\Enums\ScheduleStatus::Paid->value)
                 ->orderByDesc('due_date')->limit(12)->get(),
             'overdue' => $loan->overduePayments()->orderBy('due_date')->get(),
-            'accounts' => Account::query()->active()->assets()->orderBy('name')->get(),
+            'accounts' => Account::query()->active()->own()->assets()->orderBy('name')->get(),
         ]);
     }
 
@@ -141,7 +141,7 @@ class LoanController extends Controller
     private function formData(): array
     {
         return [
-            'accounts' => Account::query()->active()->assets()->orderBy('name')->get(),
+            'accounts' => Account::query()->active()->own()->assets()->orderBy('name')->get(),
             'categories' => Category::query()->active()->forExpenses()->ordered()->get(),
             'owners' => \App\Models\Person::query()->active()->payers()->ordered()->get(),
         ];

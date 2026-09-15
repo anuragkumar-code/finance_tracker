@@ -18,6 +18,19 @@
 
         <x-ui.card>
             <x-ui.card-content class="space-y-4">
+                @if ($transaction->isSettlementEntry())
+                    <x-ui.alert variant="warning" title="Written by settling up">
+                        This entry was created when a shared cost was settled. Saving changes here is
+                        refused — undo the settlement on the trip page instead.
+                    </x-ui.alert>
+                @elseif ($transaction->hasSharedPortion())
+                    <x-ui.alert variant="info" title="Part of this was a friend's share">
+                        The amount, account and date are locked while that settlement stands, because
+                        the share moved to your friend has to keep matching. Category, merchant, trip
+                        and note can still change.
+                    </x-ui.alert>
+                @endif
+
                 @if ($isTransfer)
                     <x-ui.alert variant="info">
                         Both sides of this transfer update together, so the two amounts can never
@@ -99,6 +112,16 @@
                                 <option value="{{ $person->id }}"
                                         @selected(old('beneficiary_id', $transaction->beneficiary_id) == $person->id)>
                                     {{ $person->name }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
+
+                        <x-ui.select label="Trip or event" name="event_id">
+                            <option value="">—</option>
+                            @foreach ($events as $event)
+                                <option value="{{ $event->id }}"
+                                        @selected(old('event_id', $transaction->event_id) == $event->id)>
+                                    {{ $event->name }}
                                 </option>
                             @endforeach
                         </x-ui.select>

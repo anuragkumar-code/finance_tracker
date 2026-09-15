@@ -337,3 +337,42 @@ php artisan merchants:group --regroup --apply   # also re-file merchants already
 
 Names that match no rule are left ungrouped rather than swept into "Other": an
 empty cell asks to be filled in, a wrong label does not.
+
+### Trips, events and shared costs
+
+A trip or event (`events`) groups spends across categories so its whole cost is
+one figure. Trip spends default to the **Holiday** category, which exists so
+holiday meals do not count against the everyday Food budget.
+
+Friends are `people` with `is_external = true`. They never appear in who-paid /
+who-for pickers. Each friend's balance is an ordinary asset account
+(`accounts.person_id`): positive when they owe the household, negative when the
+household owes them. Every listing of "your accounts" excludes these — through
+`Account::counted()` or `Account::own()` — and so do net worth and cash flow.
+
+Settling up (`SharedExpenseService`) writes real ledger entries rather than
+adjusting totals:
+
+- **They owe** — the friend's share is taken out of the event's expense rows in
+  proportion to their size (to the paisa), and moved to the friend's balance by
+  a transfer from the same account on the same date. Every bank and card
+  balance is identical before and after, on every date.
+- **We owe** — the household's share of what the friend paid is recorded as an
+  expense against the friend's balance.
+
+Each reduction is stored as an allocation, so undoing a settlement adds it back
+exactly, in any order. While a settlement stands, the entries it touched cannot
+have their amount, account or date changed, or be voided — undo the settlement
+first. Repayments are transfers (never income); a write-off is an expense.
+
+Transfers are now sign-aware on liability accounts: a transfer *out of* a credit
+card increases what is owed on it. Before this, transfers were only ever between
+asset accounts and the rule ignored the account's side.
+
+### Blade: never mix inline and block `@php`
+
+Blade pairs an inline `@php($x = …)` with the next `@endphp` in the same file
+and treats everything between as raw PHP, leaving `{{ }}`, loops and component
+tags uncompiled. It shows up either as "unexpected end of file" at the last line
+or as a page that renders scrambled with no error. Once a template has a block
+`@php … @endphp`, use block form throughout it.

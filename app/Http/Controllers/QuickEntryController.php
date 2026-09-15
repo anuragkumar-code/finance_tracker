@@ -8,10 +8,13 @@ use App\Enums\Purpose;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\Event;
 use App\Models\Merchant;
 use App\Models\MerchantGroup;
 use App\Models\Person;
+use App\Services\SharedExpenseService;
 use App\Services\TransactionService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +30,7 @@ class QuickEntryController extends Controller
 {
     public function __construct(
         private readonly TransactionService $transactions,
+        private readonly SharedExpenseService $shared,
     ) {}
 
     public function create(): View
@@ -37,16 +41,46 @@ class QuickEntryController extends Controller
     public function store(StoreExpenseRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $data['merchant_id'] = $this->resolveMerchant($request);
 
-        $transaction = $this->transactions->recordExpense($data);
+        // One transaction around the whole entry: a bill that was meant to be
+        // split must not be left saved in full if the split cannot be made.
+        try {
+            [$transaction, $settlement] = DB::transaction(function () use ($data, $request) {
+                $data['merchant_id'] = $this->resolveMerchant($request);
 
-        $this->rememberMerchantDefaults($transaction);
+                $transaction = $this->transactions->recordExpense($data);
+
+                $settlement = null;
+
+                if (! empty($data['split_person_id'])) {
+                    $settlement = $this->shared->splitTransaction(
+                        $transaction,
+                        Person::findOrFail($data['split_person_id']),
+                        (string) $data['split_amount'],
+                    );
+                }
+
+                $this->rememberMerchantDefaults($transaction->refresh());
+
+                return [$transaction, $settlement];
+            });
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return back()->withInput()->withErrors(['split_amount' => $e->getMessage()]);
+        }
+
+        $message = 'Saved '.\App\Support\Money::inr($transaction->amount).' on '.$transaction->account->name.'.';
+
+        if ($settlement !== null) {
+            $message = 'Saved. '.$settlement->person->name.' owes you '
+                .\App\Support\Money::inr($settlement->amount).'; your share of '
+                .\App\Support\Money::inr($transaction->amount).' is what counts as spending.';
+        } elseif ($transaction->event) {
+            $message .= ' Filed under '.$transaction->event->name.'.';
+        }
 
         return redirect()
             ->route('quick-entry')
-            ->with('status', 'Saved '.\App\Support\Money::inr($transaction->amount)
-                .' on '.$transaction->account->name.'.')
+            ->with('status', $message)
             ->with('saved_transaction_id', $transaction->id);
     }
 
@@ -160,6 +194,14 @@ class QuickEntryController extends Controller
             'merchantGroups' => MerchantGroup::query()->active()->ordered()->get(),
             'plannedStatuses' => PlannedStatus::cases(),
             'purposes' => Purpose::cases(),
+
+            'events' => $events = Event::query()->open()->latestFirst()->get(),
+            // The trip you are on is picked for you: during a holiday every
+            // spend belongs to it, and remembering to choose it each time is
+            // exactly the step that gets skipped.
+            'currentEvent' => $events->first(fn (Event $event) => $event->covers(today())),
+            'holidayCategoryId' => Category::query()->whereNull('parent_id')->where('name', 'Holiday')->value('id'),
+            'friends' => Person::query()->active()->external()->ordered()->get(),
         ];
     }
     /**

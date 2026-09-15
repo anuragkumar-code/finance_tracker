@@ -132,7 +132,8 @@ class ReconciliationService
      */
     public function overview(): \Illuminate\Support\Collection
     {
-        return Account::query()->active()->orderBy('type')->orderBy('name')->get()
+        // A friend's balance has no statement to check it against.
+        return Account::query()->active()->own()->orderBy('type')->orderBy('name')->get()
             ->map(function (Account $account) {
                 $last = Reconciliation::where('account_id', $account->id)
                     ->orderByDesc('reconciliation_date')->orderByDesc('id')->first();

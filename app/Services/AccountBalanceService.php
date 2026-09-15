@@ -49,9 +49,16 @@ class AccountBalanceService
             // Money received: into an asset account, or a refund reducing a card balance.
             TransactionType::Income => $isAsset ? BalanceEffect::Increase : BalanceEffect::Decrease,
 
+            // Money leaving an asset lowers it; money "leaving" a card means the
+            // card paid for something, so what is owed on it goes UP. The same
+            // flip applies on arrival. Transfers were once only ever between
+            // asset accounts, which is why this used to ignore the account's
+            // side — settling a trip paid by card is the first thing that moves
+            // a share out of a liability, and without the flip the card would
+            // appear paid down by twice that share.
             TransactionType::Transfer => match ($legRole) {
-                LegRole::TransferFrom => BalanceEffect::Decrease,
-                LegRole::TransferTo => BalanceEffect::Increase,
+                LegRole::TransferFrom => $isAsset ? BalanceEffect::Decrease : BalanceEffect::Increase,
+                LegRole::TransferTo => $isAsset ? BalanceEffect::Increase : BalanceEffect::Decrease,
                 default => throw new InvalidArgumentException(
                     "Transfer legs must be transfer_from or transfer_to, got {$legRole->value}."
                 ),

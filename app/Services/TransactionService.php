@@ -68,6 +68,7 @@ class TransactionService
                 'payer_id' => $data['payer_id'] ?? null,
                 'beneficiary_id' => $data['beneficiary_id'] ?? null,
                 'merchant_id' => $data['merchant_id'] ?? null,
+                'event_id' => $data['event_id'] ?? null,
                 'planned_status' => $data['planned_status'] ?? null,
                 'purpose' => $data['purpose'] ?? null,
                 'description' => $data['description'] ?? null,
@@ -101,10 +102,14 @@ class TransactionService
             );
         }
 
+        $this->assertNotSettlementEntry($transaction);
+
         $originalAccount = $transaction->account;
         $targetAccount = array_key_exists('account_id', $data)
             ? $this->resolveAccount($data['account_id'])
             : $originalAccount;
+
+        $this->assertSharedPortionUntouched($transaction, $data, $targetAccount);
 
         if (array_key_exists('amount', $data)) {
             $this->assertPositiveAmount($data['amount']);
@@ -115,7 +120,7 @@ class TransactionService
         return DB::transaction(function () use ($transaction, $data, $originalAccount, $targetAccount) {
             $attributes = collect($data)->only([
                 'transaction_date', 'amount', 'category_id', 'subcategory_id', 'payer_id',
-                'beneficiary_id', 'merchant_id', 'planned_status', 'purpose',
+                'beneficiary_id', 'merchant_id', 'event_id', 'planned_status', 'purpose',
                 'description', 'notes', 'reference',
             ])->all();
 
@@ -154,6 +159,15 @@ class TransactionService
             throw new InvalidArgumentException('A reason is required when voiding a transaction.');
         }
 
+        $this->assertNotSettlementEntry($transaction);
+
+        if ($transaction->hasSharedPortion()) {
+            throw new RuntimeException(
+                'Part of this entry was moved to a friend\'s balance when settling up. '
+                .'Undo that settlement first, then void it.'
+            );
+        }
+
         return DB::transaction(function () use ($transaction, $reason) {
             $accounts = [];
 
@@ -173,6 +187,15 @@ class TransactionService
     /** Reinstate a voided transaction and its linked legs. */
     public function restore(Transaction $transaction): Transaction
     {
+        // An undone settlement's entries are voided together with the
+        // reductions they balanced. Bringing one back on its own would move a
+        // friend's share out of spending a second time.
+        if ($transaction->source === 'settlement') {
+            throw new RuntimeException(
+                'This entry belonged to a settlement that was undone. Settle up again instead of restoring it.'
+            );
+        }
+
         return DB::transaction(function () use ($transaction) {
             $accounts = [];
 
@@ -190,6 +213,46 @@ class TransactionService
 
             return $transaction->refresh();
         });
+    }
+
+    /** Entries a settlement wrote are removed only by undoing that settlement. */
+    private function assertNotSettlementEntry(Transaction $transaction): void
+    {
+        if ($transaction->isSettlementEntry()) {
+            $name = $transaction->settlement?->person?->name ?? 'a friend';
+
+            throw new RuntimeException(
+                "This entry was written when settling up with {$name}. Undo that settlement instead of changing it."
+            );
+        }
+    }
+
+    /**
+     * An expense with a share moved to a friend can still be recategorised or
+     * renamed, but not changed in a way that would stop it matching the
+     * transfer that carried the share: amount, account or date.
+     */
+    private function assertSharedPortionUntouched(Transaction $transaction, array $data, Account $targetAccount): void
+    {
+        if (! $transaction->hasSharedPortion()) {
+            return;
+        }
+
+        $amountChanged = array_key_exists('amount', $data)
+            && bccomp((string) $data['amount'], (string) $transaction->amount, 2) !== 0;
+
+        $accountChanged = (int) $targetAccount->getKey() !== (int) $transaction->account_id;
+
+        $dateChanged = array_key_exists('transaction_date', $data)
+            && \Illuminate\Support\Carbon::parse($data['transaction_date'])->toDateString()
+                !== $transaction->transaction_date->toDateString();
+
+        if ($amountChanged || $accountChanged || $dateChanged) {
+            throw new RuntimeException(
+                'Part of this entry was moved to a friend\'s balance when settling up. Undo that settlement '
+                .'before changing the amount, account or date — otherwise the two would no longer add up.'
+            );
+        }
     }
 
     private function resolveAccount(Account|int|null $account): Account

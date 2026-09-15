@@ -117,7 +117,7 @@ class RecurringTransactionController extends Controller
     private function formData(): array
     {
         return [
-            'accounts' => Account::query()->active()->orderBy('name')->get(),
+            'accounts' => Account::query()->active()->own()->orderBy('name')->get(),
             'categories' => Category::query()->active()->ordered()->get(),
             'payers' => Person::query()->active()->payers()->ordered()->get(),
             'beneficiaries' => Person::query()->active()->beneficiaries()->ordered()->get(),

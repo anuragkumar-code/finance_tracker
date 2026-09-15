@@ -39,6 +39,8 @@ class Transaction extends Model
         'payer_id',
         'beneficiary_id',
         'merchant_id',
+        'event_id',
+        'shared_settlement_id',
         'planned_status',
         'purpose',
         'description',
@@ -90,6 +92,35 @@ class Transaction extends Model
     public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
+    }
+
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(Event::class);
+    }
+
+    /** Set when a settlement wrote this entry. */
+    public function settlement(): BelongsTo
+    {
+        return $this->belongsTo(SharedSettlement::class, 'shared_settlement_id');
+    }
+
+    /** Reductions applied to this expense by settlements. */
+    public function shareAllocations(): HasMany
+    {
+        return $this->hasMany(SharedSettlementAllocation::class);
+    }
+
+    /** Whether some of this expense has been moved to a friend's balance. */
+    public function hasSharedPortion(): bool
+    {
+        return $this->exists && SharedSettlementAllocation::where('transaction_id', $this->getKey())->exists();
+    }
+
+    /** Whether a settlement wrote this entry (it is then only removed by undoing that settlement). */
+    public function isSettlementEntry(): bool
+    {
+        return $this->shared_settlement_id !== null;
     }
 
     public function splits(): HasMany

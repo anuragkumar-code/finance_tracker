@@ -25,7 +25,7 @@ class MerchantController extends Controller
             'groups' => MerchantGroup::query()->ordered()->withCount('merchants')->get(),
             'categories' => Category::query()->active()->ordered()->get(),
             'channels' => \App\Enums\MerchantChannel::cases(),
-            'accounts' => Account::query()->active()->orderBy('name')->get(),
+            'accounts' => Account::query()->active()->own()->orderBy('name')->get(),
             'payers' => Person::query()->active()->payers()->ordered()->get(),
             'beneficiaries' => Person::query()->active()->beneficiaries()->ordered()->get(),
         ]);

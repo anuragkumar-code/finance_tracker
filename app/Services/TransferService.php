@@ -61,6 +61,13 @@ class TransferService
     public function update(Transaction $leg, array $data): Collection
     {
         $legs = $this->legsFor($leg);
+
+        if ($legs->contains(fn (Transaction $l) => $l->isSettlementEntry())) {
+            throw new RuntimeException(
+                'This transfer carries a friend\'s share from settling up. Undo that settlement instead of editing it.'
+            );
+        }
+
         $fromLeg = $legs->firstWhere('leg_role', LegRole::TransferFrom);
         $toLeg = $legs->firstWhere('leg_role', LegRole::TransferTo);
 

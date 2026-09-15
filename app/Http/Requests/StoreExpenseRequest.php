@@ -26,6 +26,12 @@ class StoreExpenseRequest extends FormRequest
             'payer_id' => ['nullable', 'exists:people,id'],
             'beneficiary_id' => ['nullable', 'exists:people,id'],
             'merchant_id' => ['nullable', 'exists:merchants,id'],
+            'event_id' => ['nullable', 'exists:events,id'],
+
+            // Splitting one bill with a friend. Their share has to be less than
+            // the bill: if they owe all of it, the household spent nothing.
+            'split_person_id' => ['nullable', Rule::exists('people', 'id')->where('is_external', true)],
+            'split_amount' => ['nullable', 'required_with:split_person_id', 'numeric', 'gt:0', 'lt:amount'],
             'planned_status' => ['nullable', new Enum(PlannedStatus::class)],
             'purpose' => ['nullable', new Enum(Purpose::class)],
             'description' => ['nullable', 'string', 'max:255'],
@@ -39,6 +45,9 @@ class StoreExpenseRequest extends FormRequest
         return [
             'amount.gt' => 'Enter an amount greater than zero.',
             'account_id.required' => 'Choose which account this was paid from.',
+            'split_amount.required_with' => 'Enter how much of this is your friend\'s share.',
+            'split_amount.lt' => 'Your friend\'s share has to be less than the whole bill.',
+            'split_person_id.exists' => 'Choose a friend to split with.',
         ];
     }
 }

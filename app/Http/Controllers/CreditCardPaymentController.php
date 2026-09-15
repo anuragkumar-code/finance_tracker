@@ -30,7 +30,7 @@ class CreditCardPaymentController extends Controller
             'card' => $creditCard->load('account'),
             'statement' => $statement,
             'statements' => $creditCard->statements()->whereNot('status', 'paid')->get(),
-            'sourceAccounts' => Account::query()->active()->assets()->orderBy('name')->get(),
+            'sourceAccounts' => Account::query()->active()->own()->assets()->orderBy('name')->get(),
             'suggestedAmount' => $statement?->balanceRemaining() ?? $creditCard->outstanding(),
         ]);
     }

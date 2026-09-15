@@ -21,6 +21,7 @@ class DashboardController extends Controller
         private readonly LoanService $loans,
         private readonly \App\Services\Reporting\NetWorthService $netWorth,
         private readonly \App\Services\Reporting\BudgetService $budgets,
+        private readonly \App\Services\PersonBalanceService $friends,
     ) {}
 
     public function index(Request $request): View
@@ -81,6 +82,11 @@ class DashboardController extends Controller
 
             // What is left after everything already committed (spec section 21).
             'reality' => $this->upcoming->financialReality(30),
+
+            // Money friends still owe, or the household owes them. On the
+            // dashboard because a repayment nobody is reminded of is one that
+            // quietly never happens.
+            'friendBalances' => $this->friends->summary()->take(5),
             'obligations' => $this->upcoming->forNextDays(30)->take(6),
 
             // EMIs are counted inside "spent" by household choice, so the

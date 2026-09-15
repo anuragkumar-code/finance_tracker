@@ -20,6 +20,9 @@
                                     @if ($person->is_household)
                                         <x-ui.badge variant="secondary">Joint</x-ui.badge>
                                     @endif
+                                    @if ($person->is_external)
+                                        <x-ui.badge variant="info">Friend</x-ui.badge>
+                                    @endif
                                 </div>
                                 <p class="mt-0.5 text-xs text-muted-foreground">
                                     {{ $person->relationship ?: 'No relationship set' }}

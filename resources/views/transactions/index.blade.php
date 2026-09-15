@@ -12,7 +12,7 @@
 
 @section('content')
 @php
-    $advancedKeys = ['category_id', 'payer_id', 'beneficiary_id', 'planned_status', 'purpose', 'merchant_id', 'merchant_group_id', 'min_amount', 'max_amount'];
+    $advancedKeys = ['category_id', 'payer_id', 'beneficiary_id', 'planned_status', 'purpose', 'merchant_id', 'merchant_group_id', 'event_id', 'min_amount', 'max_amount'];
     $advancedCount = collect($filters)->only($advancedKeys)->filter(fn ($v) => filled($v))->count();
 
     $sort = request()->query('sort', 'date');
@@ -34,6 +34,7 @@
         ['key' => 'category_id', 'label' => 'Category', 'value' => $lookup($categories, $filters['category_id'] ?? null)],
         ['key' => 'merchant_id', 'label' => 'Merchant', 'value' => $lookup($merchants, $filters['merchant_id'] ?? null)],
         ['key' => 'merchant_group_id', 'label' => 'Kind of place', 'value' => $lookup($merchantGroups, $filters['merchant_group_id'] ?? null)],
+        ['key' => 'event_id', 'label' => 'Trip', 'value' => $lookup($events, $filters['event_id'] ?? null)],
         ['key' => 'payer_id', 'label' => 'Paid by', 'value' => $lookup($people, $filters['payer_id'] ?? null)],
         ['key' => 'beneficiary_id', 'label' => 'For', 'value' => $lookup($people, $filters['beneficiary_id'] ?? null)],
         ['key' => 'planned_status', 'label' => 'Planned', 'value' => collect($plannedStatuses)->firstWhere('value', $filters['planned_status'] ?? null)?->label()],
@@ -140,6 +141,16 @@
                             <option value="">All merchants</option>
                             @foreach ($merchants as $merchant)
                                 <option value="{{ $merchant->id }}" @selected(($filters['merchant_id'] ?? '') == $merchant->id)>{{ $merchant->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Trip or event</span>
+                        <select name="event_id" class="{{ $field }}">
+                            <option value="">Any</option>
+                            @foreach ($events as $event)
+                                <option value="{{ $event->id }}" @selected(($filters['event_id'] ?? '') == $event->id)>{{ $event->name }}</option>
                             @endforeach
                         </select>
                     </label>

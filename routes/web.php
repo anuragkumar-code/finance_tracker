@@ -7,7 +7,9 @@ use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\CreditCardPaymentController;
 use App\Http\Controllers\CreditCardStatementController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\FriendController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\QuickEntryController;
 use App\Http\Controllers\ReconciliationController;
@@ -131,6 +133,21 @@ Route::delete('/assets/{asset}', [AssetController::class, 'destroy'])->name('ass
 
 // What is committed, and what that leaves.
 Route::get('/upcoming', [UpcomingController::class, 'index'])->name('upcoming.index');
+
+/*
+ * Trips & events, and squaring up with friends. A settlement reshapes real
+ * ledger entries, so it is created and undone only through these routes and
+ * never by editing the entries it touched.
+ */
+Route::resource('events', EventController::class);
+Route::post('/events/{event}/settlements', [EventController::class, 'settle'])->name('events.settle');
+Route::delete('/settlements/{settlement}', [EventController::class, 'undoSettlement'])->name('settlements.undo');
+
+Route::get('/friends', [FriendController::class, 'index'])->name('friends.index');
+Route::post('/friends', [FriendController::class, 'store'])->name('friends.store');
+Route::post('/friends/{person}/repayments', [FriendController::class, 'repayment'])->name('friends.repayment');
+Route::post('/friends/{person}/paybacks', [FriendController::class, 'payback'])->name('friends.payback');
+Route::post('/friends/{person}/write-offs', [FriendController::class, 'writeOff'])->name('friends.write-off');
 
 // Settings
 Route::prefix('settings')->name('settings.')->group(function () {
