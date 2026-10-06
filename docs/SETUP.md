@@ -376,3 +376,38 @@ and treats everything between as raw PHP, leaving `{{ }}`, loops and component
 tags uncompiled. It shows up either as "unexpected end of file" at the last line
 or as a page that renders scrambled with no error. Once a template has a block
 `@php … @endphp`, use block form throughout it.
+
+### Expense-first: no bank balances
+
+The app records what leaves, not what arrives. Two switches express that:
+
+- **`accounts.tracks_balance`** — derived from account type in `Account::booted()`,
+  beside `normal_balance`. Bank and cash are *payment sources*: no balance is
+  kept or shown, only what went out through them. Cards, investments and other
+  holdings keep a balance. Listings use `Account::paymentSources()` and
+  `Account::balanceTracked()`.
+- **`categories.counts_as_spending`** — false for Investments. The exclusion is
+  applied inside `Transaction::scopeSpending()`, the single definition of
+  spending, so every report and its drill-down still agree.
+  `Transaction::invested()` and `SpendingReportService::totalInvested()` report
+  the other side.
+
+Income, net worth, "realistically available" and Reconcile are hidden rather
+than removed: the income rows, opening balances and reconciliation code all
+remain, because this is a decision about what the app *shows*.
+
+Two commands correct history, and both report before they write:
+
+```bash
+php artisan loans:backfill-emis --map="Land Loan=HDFC"   # dry run
+php artisan loans:backfill-emis --map="Land Loan=HDFC" --apply
+php artisan transactions:recategorise --to=Investments --match="paytm money"
+php artisan transactions:recategorise --to=Investments --match="paytm money" --apply
+```
+
+`loans:backfill-emis` exists because instalments that fell due before the app
+was adopted are marked paid at loan creation and never get an entry — so the
+largest regular outflow was missing from spending. Where an entry already
+exists it is linked, never written twice. `transactions:recategorise` changes
+only the category; amount, account and date are never touched, and it refuses
+to run without a `--match` or `--id` so it cannot sweep up more than intended.
