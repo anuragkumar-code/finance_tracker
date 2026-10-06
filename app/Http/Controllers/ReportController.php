@@ -33,7 +33,6 @@ class ReportController extends Controller
         $start = $month->copy()->startOfMonth()->toDateString();
         $end = $month->copy()->endOfMonth()->toDateString();
 
-        $income = $this->reports->totalIncome($start, $end);
         $spending = $this->reports->totalSpending($start, $end);
 
         return view('reports.index', [
@@ -41,16 +40,10 @@ class ReportController extends Controller
             'start' => $start,
             'end' => $end,
 
-            'income' => $income,
             'spending' => $spending,
-            'surplus' => bcsub($income, $spending, 2),
-            'savingsRate' => bccomp($income, '0', 2) === 1
-                ? round((float) bcsub($income, $spending, 2) / (float) $income * 100, 1)
-                : null,
+            'invested' => $this->reports->totalInvested($start, $end),
             'debtRepayment' => $this->reports->debtRepayment($start, $end),
             'cardSpending' => $this->reports->creditCardSpending($start, $end),
-            'cashOutflow' => $this->reports->cashOutflow($start, $end),
-            'netCashMovement' => $this->reports->netCashMovement($start, $end),
 
             'weekly' => $this->reports->weekly($month),
             'byCategory' => $this->reports->byCategory($start, $end),

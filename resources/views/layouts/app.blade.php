@@ -48,7 +48,6 @@
         'Analytics' => [
             ['route' => 'reports.index', 'label' => 'Reports', 'icon' => 'chart-line', 'match' => 'reports.*'],
             ['route' => 'budgets.index', 'label' => 'Budgets', 'icon' => 'target', 'match' => 'budgets.*'],
-            ['route' => 'reconciliations.index', 'label' => 'Reconcile', 'icon' => 'scale', 'match' => 'reconciliations.*'],
         ],
         'Settings' => [
             ['route' => 'settings.categories.index', 'label' => 'Categories', 'icon' => 'tags', 'match' => 'settings.categories.*'],
@@ -68,13 +67,11 @@
         ]))
         ->concat([
             ['label' => 'Record a spend', 'group' => 'Actions', 'icon' => 'plus', 'url' => route('quick-entry')],
-            ['label' => 'Record income', 'group' => 'Actions', 'icon' => 'trending-up', 'url' => route('transactions.create', ['type' => 'income'])],
             ['label' => 'Move money between accounts', 'group' => 'Actions', 'icon' => 'arrow-left-right', 'url' => route('transactions.create', ['type' => 'transfer'])],
             ['label' => 'Add an account', 'group' => 'Actions', 'icon' => 'wallet', 'url' => route('accounts.create')],
             ['label' => 'Plan a trip or event', 'group' => 'Actions', 'icon' => 'plane', 'url' => route('events.create')],
             ['label' => 'Record a friend paying you back', 'group' => 'Actions', 'icon' => 'hand-coins', 'url' => route('friends.index')],
             ['label' => 'Trends over time', 'group' => 'Actions', 'icon' => 'chart-line', 'url' => route('reports.trends')],
-            ['label' => 'Net worth', 'group' => 'Actions', 'icon' => 'scale', 'url' => route('reports.net-worth')],
             ['label' => 'Export transactions as CSV', 'group' => 'Actions', 'icon' => 'download', 'url' => route('export.transactions')],
         ])
         ->values();

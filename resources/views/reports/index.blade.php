@@ -16,26 +16,34 @@
 @endsection
 
 @section('content')
-@php($base = ['start' => $start, 'end' => $end])
+@php
+    $base = ['start' => $start, 'end' => $end];
+@endphp
 
 <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-    <x-ui.stat label="Received" icon="trending-up" tone="income" :value="\App\Support\Money::inr($income)" />
+    @php
+        $emiHint = bccomp($debtRepayment, '0', 2) === 1
+            ? 'incl. '.\App\Support\Money::inr($debtRepayment).' loan EMIs'
+            : null;
+    @endphp
 
     <x-ui.stat label="Spent" icon="trending-down" :value="\App\Support\Money::inr($spending)"
-        :hint="bccomp($debtRepayment, '0', 2) === 1
-            ? 'incl. '.\App\Support\Money::inr($debtRepayment).' loan EMIs' : null" />
+        :hint="$emiHint" />
 
-    <x-ui.stat label="Left over"
-        :tone="bccomp($surplus, '0', 2) === -1 ? 'expense' : 'income'"
-        :value="\App\Support\Money::inr($surplus)"
-        :hint="$savingsRate !== null ? $savingsRate.'% of what came in' : null" />
+    <x-ui.stat label="On credit cards" icon="credit-card"
+        :value="\App\Support\Money::inr($cardSpending)" hint="Charged this month" />
 
-    {{-- Cash outflow is deliberately not the same as spending. --}}
-    <x-ui.stat label="Left your accounts" icon="arrow-up-right"
-        :value="\App\Support\Money::inr($cashOutflow)" hint="incl. transfers &amp; card bills" />
+    {{-- Investments leave an account without being consumed, so they are
+         reported beside spending rather than inside it. --}}
+    <x-ui.stat label="Invested" icon="trending-up" tone="income"
+        :value="\App\Support\Money::inr($invested)" hint="Moved, not spent" />
+
+    <x-ui.stat label="Biggest category" icon="chart-pie"
+        :value="$byCategory->first()->label ?? '—'"
+        :hint="$byCategory->isNotEmpty() ? \App\Support\Money::inr($byCategory->first()->amount) : null" />
 </div>
 
-@if (bccomp($spending, '0', 2) !== 1 && bccomp($income, '0', 2) !== 1)
+@if (bccomp($spending, '0', 2) !== 1 && bccomp($invested, '0', 2) !== 1)
     <x-ui.card class="mt-4">
         <x-ui.empty-state icon="chart-line" :title="'Nothing recorded for '.$month->format('F Y')"
             description="Once you start entering spending, this page breaks it down every way.">
@@ -59,9 +67,7 @@
                         </a>
                         <span class="shrink-0 text-right">
                             <x-finance.money :amount="$week->spending" class="block text-sm" />
-                            @if (bccomp($week->income, '0', 2) === 1)
-                                <x-finance.money :amount="$week->income" tone="income" class="block text-xs" />
-                            @endif
+
                         </span>
                     </li>
                 @endforeach
@@ -85,7 +91,9 @@
                     </div>
                     <ul class="space-y-1">
                         @foreach ($byCategory as $i => $row)
-                            @php($share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0)
+                            @php
+                                $share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0;
+                            @endphp
                             <li>
                                 <a href="{{ route('transactions.index', $base + ['type' => 'expense', 'category_id' => $row->category_id]) }}"
                                    class="group flex items-center gap-2.5 rounded-md px-1.5 py-1 hover:bg-muted">
@@ -143,7 +151,9 @@
         @if ($byChannel->isNotEmpty())
             <ul class="mt-4 divide-y divide-border border-t border-border">
                 @foreach ($byChannel as $row)
-                    @php($share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0)
+                    @php
+                        $share = bccomp($spending, '0', 2) === 1 ? round($row->amount / $spending * 100) : 0;
+                    @endphp
                     <li class="flex items-center justify-between gap-3 py-2.5">
                         <div class="min-w-0">
                             <x-ui.badge :variant="match($row->key) {
@@ -196,9 +206,9 @@
 <x-ui.card class="mt-4">
     <x-ui.card-content class="text-sm text-muted-foreground">
         <span class="font-medium text-foreground">Reading these numbers.</span>
-        "Spent" is what you consumed. "Left your accounts" is broader — it includes moving money
-        between your own accounts and paying card bills, neither of which is spending. Card purchases
-        count as spending on the day you buy; paying that card's bill later is not counted again.
+        "Spent" is what you consumed. Investments are listed separately: money leaving an account is
+        not the same as money consumed. Card purchases count as spending on the day you buy; paying
+        that card's bill later is not counted again. Loan EMIs count as spending on the day they go out.
     </x-ui.card-content>
 </x-ui.card>
 
@@ -206,14 +216,13 @@
 @endsection
 
 @push('scripts')
-@if (bccomp($spending, '0', 2) === 1 || bccomp($income, '0', 2) === 1)
+@if (bccomp($spending, '0', 2) === 1)
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     ftChart.bars(document.getElementById('weeklyChart'), {
         horizontal: false,
         labels: @json($weekly->pluck('label')),
         datasets: [
-            { label: 'Received', data: @json($weekly->pluck('income')->map(fn ($v) => (float) $v)), color: ftChart.colors.income },
             { label: 'Spent', data: @json($weekly->pluck('spending')->map(fn ($v) => (float) $v)), color: ftChart.colors.expense },
         ],
     });

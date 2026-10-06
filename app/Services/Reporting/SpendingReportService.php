@@ -41,6 +41,20 @@ class SpendingReportService
         );
     }
 
+    /**
+     * Money moved into investments and savings in the period.
+     *
+     * Deliberately not part of totalSpending: buying shares is money leaving an
+     * account, not money consumed, and mixing the two made "Other" the largest
+     * category while overstating what the household actually spends.
+     */
+    public function totalInvested(string $start, string $end): string
+    {
+        return $this->decimal(
+            Transaction::query()->invested()->inPeriod($start, $end)->sum('amount')
+        );
+    }
+
     /** Money received in the period. */
     public function totalIncome(string $start, string $end): string
     {
@@ -351,6 +365,7 @@ class SpendingReportService
                 'end' => $end,
                 'income' => $income,
                 'spending' => $spending,
+                'invested' => $this->totalInvested($start, $end),
                 'card_spending' => $this->creditCardSpending($start, $end),
                 'net' => bcsub($income, $spending, self::SCALE),
             ]);

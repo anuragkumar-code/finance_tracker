@@ -8,6 +8,7 @@ use App\Enums\ScheduleStatus;
 use App\Models\Account;
 use App\Models\Loan;
 use App\Models\LoanPayment;
+use App\Models\Transaction;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -174,6 +175,74 @@ class LoanService
             $this->closeIfFinished($loan->refresh());
 
             return $instalment->refresh();
+        });
+    }
+
+    /**
+     * Attach a ledger entry to an instalment already recorded as paid.
+     *
+     * Instalments that fell due before the household started using the app are
+     * marked paid when the loan is created, as history — they never get an
+     * entry, so the EMI is invisible in "where the money went" even though it
+     * is the largest regular outflow. This writes the entry that was missing.
+     *
+     * Deliberately separate from payInstalment(), which refuses an instalment
+     * that is already paid: the status is not in question here, only the
+     * missing entry.
+     */
+    public function recordMissingEntry(LoanPayment $instalment, Account $account): Transaction
+    {
+        if ($instalment->status !== ScheduleStatus::Paid) {
+            throw new InvalidArgumentException('That instalment is not recorded as paid.');
+        }
+
+        if ($instalment->transaction_id !== null) {
+            throw new InvalidArgumentException('That instalment already has a ledger entry.');
+        }
+
+        if ($account->isLiability()) {
+            throw new InvalidArgumentException('An EMI is paid from a bank or cash account.');
+        }
+
+        $loan = $instalment->loan;
+
+        return DB::transaction(function () use ($instalment, $loan, $account) {
+            $transaction = $this->transactions->recordExpense([
+                'transaction_date' => ($instalment->payment_date ?? $instalment->due_date)->toDateString(),
+                'account_id' => $account->id,
+                'amount' => (string) $instalment->amount,
+                'category_id' => $loan->category_id,
+                'purpose' => Purpose::Debt->value,
+                'planned_status' => \App\Enums\PlannedStatus::Planned->value,
+                'description' => $loan->name.' EMI '.$instalment->period_number.'/'.$loan->total_months,
+            ]);
+
+            $transaction->forceFill(['loan_payment_id' => $instalment->id])->save();
+
+            $instalment->update([
+                'account_id' => $account->id,
+                'transaction_id' => $transaction->id,
+            ]);
+
+            return $transaction;
+        });
+    }
+
+    /**
+     * Point an instalment at an entry that already exists, rather than writing
+     * a second one. Used where an EMI was typed in by hand before the
+     * instalment was linked.
+     */
+    public function linkExistingEntry(LoanPayment $instalment, Transaction $transaction): void
+    {
+        DB::transaction(function () use ($instalment, $transaction) {
+            $transaction->forceFill(['loan_payment_id' => $instalment->id])->save();
+
+            $instalment->update([
+                'account_id' => $transaction->account_id,
+                'transaction_id' => $transaction->id,
+                'payment_date' => $instalment->payment_date ?? $transaction->transaction_date,
+            ]);
         });
     }
 

@@ -30,6 +30,19 @@ class AccountController extends Controller
             ->when($owner, fn ($q) => $q->ownedBy($owner))
             ->orderBy('type')->orderBy('name')->get();
 
+        // How much went out through each account this month. For a bank or cash
+        // account this replaces the balance entirely: it is the only honest
+        // thing the app can say about an account whose income it never sees.
+        $month = [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()];
+
+        $spendByAccount = \App\Models\Transaction::query()
+            ->spending()
+            ->inPeriod(...$month)
+            ->selectRaw('account_id, SUM(amount) AS spent, COUNT(*) AS entries')
+            ->groupBy('account_id')
+            ->get()
+            ->keyBy('account_id');
+
         // Set-aside accounts are kept out of every total and every other screen,
         // but must stay reachable here — otherwise the household could not
         // transfer into the fund or correct its balance.
@@ -38,9 +51,17 @@ class AccountController extends Controller
             ->orderBy('name')->get();
 
         return view('accounts.index', [
-            'accounts' => $accounts->groupBy(fn (Account $a) => $a->type->label()),
+            'paymentSources' => $accounts->reject->tracksBalance()->values(),
+            'balanceAccounts' => $accounts->filter->tracksBalance()
+                ->groupBy(fn (Account $a) => $a->type->label()),
+            'spendByAccount' => $spendByAccount,
             'setAside' => $setAside,
-            'netWorth' => $this->netWorth->summary(),
+            'cardsOwed' => $accounts
+                ->filter(fn (Account $a) => $a->type === \App\Enums\AccountType::CreditCard)
+                ->reduce(fn (string $carry, Account $a) => bcadd($carry, (string) $a->cached_balance, 2), '0.00'),
+            'spentThisMonth' => $spendByAccount->reduce(
+                fn (string $carry, $row) => bcadd($carry, (string) $row->spent, 2), '0.00'
+            ),
             'owners' => Person::query()->active()->payers()->ordered()->get(),
             'selectedOwner' => $owner,
         ]);
@@ -71,6 +92,15 @@ class AccountController extends Controller
         return view('accounts.show', [
             'account' => $account,
             'derivedBalance' => $this->balances->balance($account),
+
+            // For an account that keeps no balance, what went out through it
+            // this month is the only figure the app can stand behind.
+            'spentThrough' => (string) Transaction::query()
+                ->spending()
+                ->forAccount($account)
+                ->inPeriod(now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString())
+                ->sum('amount'),
+            'periodLabel' => now()->format('F Y'),
             'transactions' => Transaction::query()
                 ->with(['category', 'merchant', 'payer'])
                 ->forAccount($account)

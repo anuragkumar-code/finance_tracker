@@ -147,12 +147,14 @@ class SetAsideAndAssetsTest extends TestCase
         $this->account('Everyday', '50000');
         $this->account('Emergency fund', '225000', setAside: true);
 
+        // Bank balances are no longer shown anywhere — the app records what is
+        // spent, not what is earned. What still matters here is that the
+        // emergency fund is absent from every figure that remains.
         $this->get('/')
             ->assertOk()
-            ->assertSee('50,000.00')
-            // The emergency fund's balance appears nowhere on the dashboard.
             ->assertDontSee('2,25,000.00')
-            ->assertDontSee('2,75,000.00');
+            ->assertDontSee('2,75,000.00')
+            ->assertDontSee('50,000.00');
 
         $this->assertSame('50000.00', app(SpendingReportService::class)->spendableCash());
         $this->assertSame('50000.00', app(NetWorthService::class)->summary()['net_worth']);

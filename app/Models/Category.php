@@ -16,6 +16,7 @@ class Category extends Model
         'name',
         'parent_id',
         'applies_to',
+        'counts_as_spending',
         'is_active',
         'sort_order',
     ];
@@ -24,6 +25,7 @@ class Category extends Model
     {
         return [
             'is_active' => 'boolean',
+            'counts_as_spending' => 'boolean',
             'sort_order' => 'integer',
         ];
     }
@@ -52,6 +54,24 @@ class Category extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Categories that represent consumption.
+     *
+     * Investments are money leaving an account without being spent. They stay
+     * in the ledger and on the account; they are simply not consumption, and
+     * counting them as such overstated spending and buried the real top
+     * category underneath "Other".
+     */
+    public function scopeConsumption(Builder $query): Builder
+    {
+        return $query->where('counts_as_spending', true);
+    }
+
+    public function scopeNotConsumption(Builder $query): Builder
+    {
+        return $query->where('counts_as_spending', false);
     }
 
     public function scopeTopLevel(Builder $query): Builder

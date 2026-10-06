@@ -19,7 +19,6 @@ class DashboardController extends Controller
         private readonly CreditCardService $cards,
         private readonly UpcomingObligationsService $upcoming,
         private readonly LoanService $loans,
-        private readonly \App\Services\Reporting\NetWorthService $netWorth,
         private readonly \App\Services\Reporting\BudgetService $budgets,
         private readonly \App\Services\PersonBalanceService $friends,
     ) {}
@@ -41,8 +40,8 @@ class DashboardController extends Controller
         $prevStart = $previous->copy()->startOfMonth()->toDateString();
         $prevEnd = $previous->copy()->endOfMonth()->toDateString();
 
-        $income = $this->reports->totalIncome($start, $end);
         $spending = $this->reports->totalSpending($start, $end);
+        $invested = $this->reports->totalInvested($start, $end);
         $cardSpending = $this->reports->creditCardSpending($start, $end);
 
         return view('dashboard', [
@@ -55,22 +54,25 @@ class DashboardController extends Controller
 
             // Percentage change against last month, or null where last month
             // was zero — "up from nothing" is not a percentage.
-            'incomeDelta' => $this->change($this->reports->totalIncome($prevStart, $prevEnd), $income),
             'spendingDelta' => $this->change($this->reports->totalSpending($prevStart, $prevEnd), $spending),
             'cardDelta' => $this->change($this->reports->creditCardSpending($prevStart, $prevEnd), $cardSpending),
 
-            'income' => $income,
             'spending' => $spending,
+            'invested' => $invested,
             'cardSpending' => $cardSpending,
-            'netCashMovement' => $this->reports->netCashMovement($start, $end),
-            'spendableCash' => $this->reports->spendableCash(),
-            'netWorth' => $this->netWorth->summary(),
 
             'byCategory' => $this->reports->byCategory($start, $end),
             'byPlanned' => $this->reports->groupedBy('planned_status', $start, $end),
             'byPayer' => $this->reports->groupedBy('payer_id', $start, $end),
 
-            'accounts' => Account::query()->active()->counted()->orderBy('type')->orderBy('name')->get(),
+            // Only accounts whose balance means something. Bank and cash are
+            // payment sources now: the household records what it spends, not
+            // what it earns, so a derived current-account balance only drifts.
+            'cards' => Account::query()->active()->counted()->balanceTracked()
+                ->where('type', 'credit_card')->with('owner')
+                ->orderByDesc('cached_balance')->get(),
+
+            'hasAccounts' => Account::query()->active()->counted()->exists(),
 
             // Card bills coming due are the household's most immediate
             // commitment, so they sit on the dashboard rather than behind a tab.
@@ -80,8 +82,9 @@ class DashboardController extends Controller
                 '0.00'
             ),
 
-            // What is left after everything already committed (spec section 21).
-            'reality' => $this->upcoming->financialReality(30),
+            // What is already promised to leave over the next 30 days: EMIs,
+            // card bills, rent, broadband. The outflow side of "what is coming".
+            'committed' => $this->upcoming->totalFor(30),
 
             // Money friends still owe, or the household owes them. On the
             // dashboard because a repayment nobody is reminded of is one that

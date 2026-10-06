@@ -72,7 +72,7 @@ class LoanScreensTest extends TestCase
     {
         $this->get('/loans')->assertOk()->assertSee('No loans yet');
         $this->get('/recurring')->assertOk();
-        $this->get('/upcoming')->assertOk()->assertSee('Realistically available');
+        $this->get('/upcoming')->assertOk()->assertSee('Committed over');
     }
 
     public function test_creating_a_loan_through_the_form_builds_the_schedule(): void
@@ -194,7 +194,7 @@ class LoanScreensTest extends TestCase
         $this->assertSame('26000.00', (string) Transaction::query()->spending()->sum('amount'));
     }
 
-    public function test_the_dashboard_shows_realistically_available(): void
+    public function test_the_dashboard_shows_what_is_already_committed(): void
     {
         $bank = $this->bank('135000');
 
@@ -206,9 +206,12 @@ class LoanScreensTest extends TestCase
             'due_day' => 12,
         ]);
 
+        // This used to read "realistically available": the bank balance minus
+        // commitments. The bank half came from income the household does not
+        // record, so only the commitment survived the move to expense-first.
         $this->get('/')
             ->assertOk()
-            ->assertSee('Realistically available')
+            ->assertSee('Committed next 30 days')
             ->assertSee('Land Loan');
     }
 }

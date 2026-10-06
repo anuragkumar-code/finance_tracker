@@ -265,6 +265,11 @@ class CreditCardAccountingTest extends TestCase
 
     public function test_a_partial_payment_leaves_the_statement_partly_paid(): void
     {
+        // A statement's status is read against today, so without a fixed
+        // "now" this test turns red the moment the real date passes the
+        // due date it hard-codes.
+        Carbon::setTestNow('2026-09-26');
+
         $bank = $this->account('HDFC Bank', AccountType::Bank, '85000');
         $card = $this->card();
         $this->purchase($card, '10000', '2026-09-08');
@@ -302,6 +307,11 @@ class CreditCardAccountingTest extends TestCase
 
     public function test_voiding_a_payment_restores_the_debt_and_the_statement(): void
     {
+        // A statement's status is read against today, so without a fixed
+        // "now" this test turns red the moment the real date passes the
+        // due date it hard-codes.
+        Carbon::setTestNow('2026-09-26');
+
         $bank = $this->account('HDFC Bank', AccountType::Bank, '85000');
         $card = $this->card();
         $this->purchase($card, '10000', '2026-09-08');

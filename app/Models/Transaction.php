@@ -202,6 +202,22 @@ class Transaction extends Model
      */
     public function scopeSpending(Builder $query): Builder
     {
-        return $query->where('type', TransactionType::Expense->value);
+        return $query
+            ->where('type', TransactionType::Expense->value)
+            // Money can leave an account without being consumed. Excluding it
+            // here rather than in each report is what keeps every figure and
+            // its drill-down agreeing — there are 18 callers of this scope.
+            ->whereDoesntHave('category', fn (Builder $q) => $q->notConsumption());
+    }
+
+    /**
+     * Money moved into savings or investments: out of the account, but not
+     * spent. Reported alongside spending, never inside it.
+     */
+    public function scopeInvested(Builder $query): Builder
+    {
+        return $query
+            ->where('type', TransactionType::Expense->value)
+            ->whereHas('category', fn (Builder $q) => $q->notConsumption());
     }
 }

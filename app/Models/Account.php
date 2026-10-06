@@ -28,6 +28,7 @@ class Account extends Model
         'currency',
         'is_active',
         'is_set_aside',
+        'tracks_balance',
         'set_aside_reason',
         'notes',
     ];
@@ -43,6 +44,7 @@ class Account extends Model
             'cached_balance_as_of' => 'datetime',
             'is_active' => 'boolean',
             'is_set_aside' => 'boolean',
+            'tracks_balance' => 'boolean',
         ];
     }
 
@@ -53,6 +55,12 @@ class Account extends Model
         static::saving(function (Account $account) {
             if ($account->type instanceof AccountType) {
                 $account->normal_balance = $account->type->normalBalance();
+
+                // Derived from type for the same reason: a bank account whose
+                // balance "is tracked" would quietly start reporting a figure
+                // built from income this app does not record. Cards, investments
+                // and other holdings keep theirs.
+                $account->tracks_balance = ! $account->type->isSpendableCash();
             }
         });
     }
@@ -145,6 +153,30 @@ class Account extends Model
     public function isFriendBalance(): bool
     {
         return $this->person_id !== null;
+    }
+
+    /**
+     * Whether a running balance for this account means anything.
+     *
+     * False for bank and cash: the household records what it spends, not what
+     * it earns, so a derived current-account balance only drifts. Such an
+     * account is still a real place money leaves from — it just has no total.
+     */
+    public function tracksBalance(): bool
+    {
+        return (bool) $this->tracks_balance;
+    }
+
+    /** Accounts whose balance is worth showing — cards, investments, assets. */
+    public function scopeBalanceTracked(Builder $query): Builder
+    {
+        return $query->where('tracks_balance', true);
+    }
+
+    /** Bank and cash: where money goes out from, with no balance of their own. */
+    public function scopePaymentSources(Builder $query): Builder
+    {
+        return $query->where('tracks_balance', false);
     }
 
     public function scopeSetAside(Builder $query): Builder

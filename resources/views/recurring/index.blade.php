@@ -152,10 +152,7 @@
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <x-ui.input label="Amount" name="amount" inputmode="decimal" prefix="₹" required />
-                        <x-ui.select label="Type" name="type">
-                            <option value="expense">Money out</option>
-                            <option value="income">Money in</option>
-                        </x-ui.select>
+                        <input type="hidden" name="type" value="expense">
 
                         <x-ui.select label="How often" name="frequency">
                             @foreach ($frequencies as $frequency)

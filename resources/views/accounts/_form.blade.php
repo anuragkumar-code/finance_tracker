@@ -1,11 +1,17 @@
-@php($account = $account ?? null)
+@php
+    $account = $account ?? null;
 
-<div class="space-y-4">
+    // Bank and cash keep no balance, so they are not asked for an opening one.
+    $balanceTypes = ['credit_card', 'investment', 'other_asset', 'other_liability'];
+    $selectedType = old('type', $account?->type?->value ?? 'bank');
+@endphp
+
+<div class="space-y-4" x-data="{ type: '{{ $selectedType }}', balanceTypes: @js($balanceTypes) }">
     <div class="grid gap-4 sm:grid-cols-2">
         <x-ui.input label="Name" name="name" :value="old('name', $account?->name)"
             placeholder="HDFC Bank" required />
 
-        <x-ui.select label="Type" name="type" :disabled="$hasActivity ?? false">
+        <x-ui.select label="Type" name="type" x-model="type" :disabled="$hasActivity ?? false">
             @foreach ($types as $type)
                 <option value="{{ $type->value }}" @selected(old('type', $account?->type?->value) === $type->value)>
                     {{ $type->label() }}
@@ -49,14 +55,29 @@
         <x-ui.input label="Currency" name="currency" maxlength="3"
             :value="old('currency', $account?->currency ?? 'INR')" />
 
-        <x-ui.input label="Balance today" name="opening_balance" inputmode="decimal" prefix="₹"
-            :value="old('opening_balance', $account?->opening_balance ?? '0.00')" required
-            hint="For a card or loan, enter what you owe as a positive number." />
+        {{--
+            Only accounts that keep a balance ask for an opening one.
 
-        <x-ui.input label="As of" name="opening_balance_date" type="date"
-            :value="old('opening_balance_date', optional($account?->opening_balance_date)->toDateString() ?? now()->toDateString())"
-            required
-            hint="Your starting position. Entries dated before this are history and will not move this balance." />
+            For a bank account there is nothing for it to open: no running
+            balance is kept, because the household records what it spends and
+            not what it earns. The columns stay in the database with a zero so
+            nothing about the ledger changes shape.
+        --}}
+        <div class="sm:col-span-2">
+            <div x-show="balanceTypes.includes(type)" class="grid gap-4 sm:grid-cols-2">
+                <x-ui.input label="Balance today" name="opening_balance" inputmode="decimal" prefix="₹"
+                    :value="old('opening_balance', $account?->opening_balance ?? '0.00')"
+                    hint="For a card, enter what you owe as a positive number." />
+
+                <x-ui.input label="As of" name="opening_balance_date" type="date"
+                    :value="old('opening_balance_date', optional($account?->opening_balance_date)->toDateString() ?? now()->toDateString())"
+                    hint="Entries dated before this are history and will not move the balance." />
+            </div>
+
+            <p x-show="!balanceTypes.includes(type)" x-cloak class="text-sm text-muted-foreground">
+                Bank and cash accounts keep no balance — they record where money went out from.
+            </p>
+        </div>
     </div>
 
     <x-ui.textarea label="Notes" name="notes" rows="2" hint="Optional">{{ old('notes', $account?->notes) }}</x-ui.textarea>

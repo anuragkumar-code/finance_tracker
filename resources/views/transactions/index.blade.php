@@ -5,7 +5,6 @@
 @section('subheading', 'Every entry, filterable and sortable')
 
 @section('actions')
-    <x-ui.button :href="route('transactions.create', ['type' => 'income'])" variant="outline" icon="trending-up">Income</x-ui.button>
     <x-ui.button :href="route('transactions.create', ['type' => 'transfer'])" variant="outline" icon="arrow-left-right">Transfer</x-ui.button>
     <x-ui.button :href="route('quick-entry')" icon="plus">Spend</x-ui.button>
 @endsection

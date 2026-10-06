@@ -17,44 +17,28 @@
 
 @section('content')
 
-{{-- Spec section 21: the figure that matters more than the bank balance. --}}
+{{-- What is already promised to leave. The old version subtracted this from a
+     bank balance to show "realistically available" — but that balance came
+     from income the household does not record, so the subtraction dressed a
+     guess up as a fact. The commitment on its own is the actionable half. --}}
 <x-ui.card>
     <x-ui.card-content class="!py-6">
-        <div class="grid items-center gap-5 sm:grid-cols-[1fr_auto_1fr_auto_1.2fr]">
+        <div class="grid items-center gap-5 sm:grid-cols-2">
             <div>
-                <p class="text-xs font-medium text-muted-foreground">In bank + cash</p>
+                <p class="text-xs font-medium text-muted-foreground">Committed over {{ $days }} days</p>
+                <p class="mt-1 text-3xl font-semibold tracking-tight tabular text-expense">
+                    {{ \App\Support\Money::inr($committed) }}
+                </p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                    EMIs, card bills and recurring charges already due
+                </p>
+            </div>
+
+            <div>
+                <p class="text-xs font-medium text-muted-foreground">Of that, in the next 7 days</p>
                 <p class="mt-1 text-2xl font-semibold tracking-tight tabular">
-                    {{ \App\Support\Money::inr($reality['available']) }}
+                    {{ \App\Support\Money::inr($next7) }}
                 </p>
-            </div>
-
-            <span class="hidden text-xl text-muted-foreground sm:block" aria-hidden="true">−</span>
-
-            <div>
-                <p class="text-xs font-medium text-muted-foreground">Committed ({{ $days }} days)</p>
-                <p class="mt-1 text-2xl font-semibold tracking-tight tabular text-expense">
-                    {{ \App\Support\Money::inr($reality['committed']) }}
-                </p>
-                @if (bccomp($reality['estimated_portion'], '0', 2) === 1)
-                    <p class="text-xs text-muted-foreground">
-                        includes {{ \App\Support\Money::inr($reality['estimated_portion']) }} estimated
-                    </p>
-                @endif
-            </div>
-
-            <span class="hidden text-xl text-muted-foreground sm:block" aria-hidden="true">=</span>
-
-            <div>
-                <p class="text-xs font-medium text-muted-foreground">Realistically available</p>
-                <p class="mt-1 text-3xl font-semibold tracking-tight tabular
-                          {{ $reality['is_negative'] ? 'text-expense' : 'text-income' }}">
-                    {{ \App\Support\Money::inr($reality['realistic']) }}
-                </p>
-                @if ($reality['is_negative'])
-                    <p class="text-xs text-destructive">
-                        Commitments over the next {{ $days }} days exceed what you hold.
-                    </p>
-                @endif
             </div>
         </div>
     </x-ui.card-content>
@@ -135,7 +119,7 @@
 
                     <div class="flex items-center justify-between border-t border-border px-5 py-2.5">
                         <span class="text-xs font-medium text-muted-foreground">Total committed</span>
-                        <x-finance.money :amount="$reality['committed']" tone="strong" class="text-sm" />
+                        <x-finance.money :amount="$committed" tone="strong" class="text-sm" />
                     </div>
                 @endif
             </x-ui.card-content>

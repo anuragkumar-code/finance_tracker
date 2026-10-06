@@ -18,7 +18,7 @@
 
 @section('content')
 
-@if ($accounts->isEmpty())
+@if (! $hasAccounts)
     <x-ui.card class="mb-6">
         <x-ui.empty-state icon="wallet" title="Start with your accounts"
             description="Add your bank accounts, cash and cards with what each holds today. That starting position is recorded separately from spending, so this month's numbers stay clean.">
@@ -30,18 +30,17 @@
 @php
     // Sparklines share the six-month series behind the cash-flow chart, so a
     // card and the chart under it can never disagree about a month.
-    $incomeSeries = $series->pluck('income')->all();
     $spendSeries = $series->pluck('spending')->all();
     $cardSeries = $series->pluck('card_spending')->all();
+    $investedSeries = $series->pluck('invested')->all();
 @endphp
 
 {{-- Four figures that answer "how are we doing" in a couple of seconds. --}}
 <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-    <x-ui.stat label="Received" icon="trending-up" tone="income"
-        :value="\App\Support\Money::inr($income)"
-        :delta="$incomeDelta" :delta-label="'vs '.$previousLabel" delta-good="up"
-        :series="$incomeSeries"
-        :hint="bccomp($income, '0', 2) === 1 ? null : 'No income recorded yet'" />
+    <x-ui.stat label="Invested" icon="trending-up" tone="income"
+        :value="\App\Support\Money::inr($invested)"
+        :series="$investedSeries"
+        hint="Money moved, not spent" />
 
     <x-ui.stat label="Spent" icon="trending-down"
         :value="\App\Support\Money::inr($spending)"
@@ -55,13 +54,12 @@
         :value="\App\Support\Money::inr($cardSpending)"
         :delta="$cardDelta" :delta-label="'vs '.$previousLabel" delta-good="down"
         :series="$cardSeries"
-        hint="Purchases, not bill payments" />
+        hint="Charged this month" />
 
-    <x-ui.stat label="Realistically available" icon="wallet"
-        :tone="$reality['is_negative'] ? 'expense' : 'default'"
-        :value="\App\Support\Money::inr($reality['realistic'])"
+    <x-ui.stat label="Committed next 30 days" icon="calendar-clock"
+        :value="\App\Support\Money::inr($committed)"
         :href="route('upcoming.index')"
-        :hint="\App\Support\Money::inr($spendableCash).' less '.\App\Support\Money::inr($reality['committed']).' committed'" />
+        hint="EMIs, card bills, rent" />
 </div>
 
 @if ($budgetAlerts->isNotEmpty() || $spendingAnomalies->isNotEmpty())
@@ -141,27 +139,6 @@
     </x-ui.card>
 @endif
 
-@php
-    // Grouped for display. Sorted by size within each group, because a balances
-    // list ordered alphabetically buries the one card carrying ₹20,949 in the
-    // middle of nine that carry nothing.
-    $bankAccounts = $accounts->reject->isLiability()
-        ->sortByDesc(fn ($a) => (float) $a->cached_balance)->values();
-
-    $cardAccounts = $accounts->filter->isLiability()
-        ->sortByDesc(fn ($a) => (float) $a->cached_balance)->values();
-
-    // Cards at zero are the normal, healthy state — they are worth confirming
-    // exist, but not worth a row each above the ones you actually owe on.
-    $cardsWithBalance = $cardAccounts->filter(fn ($a) => bccomp($a->cached_balance, '0', 2) !== 0)->values();
-    $cardsAtZero = $cardAccounts->filter(fn ($a) => bccomp($a->cached_balance, '0', 2) === 0)->values();
-
-    // Subtotals are summed from the rows actually rendered, so a group total can
-    // never disagree with the lines underneath it.
-    $sum = fn ($set) => $set->reduce(fn ($carry, $a) => bcadd($carry, $a->cached_balance, 2), '0.00');
-    $bankTotal = $sum($bankAccounts);
-    $cardTotal = $sum($cardAccounts);
-@endphp
 
 {{--
     Two independent columns rather than a twelve-column grid of rows.
@@ -178,16 +155,16 @@
         {{-- The trend leads, because one month in isolation cannot tell you
              whether a figure is a problem. --}}
         <x-ui.card>
-            <x-ui.card-header title="Cash flow" description="Six months to {{ $month->format('M Y') }}">
+            <x-ui.card-header title="Spending trend" description="Six months to {{ $month->format('M Y') }}">
                 <x-slot:action>
                     <div class="flex items-center gap-3 text-xs">
                         <span class="inline-flex items-center gap-1.5">
-                            <span class="size-2 rounded-full bg-income"></span>
-                            <span class="text-muted-foreground">Received</span>
-                        </span>
-                        <span class="inline-flex items-center gap-1.5">
                             <span class="size-2 rounded-full bg-expense"></span>
                             <span class="text-muted-foreground">Spent</span>
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="size-2 rounded-full bg-[var(--chart-1)]"></span>
+                            <span class="text-muted-foreground">On cards</span>
                         </span>
                     </div>
                 </x-slot:action>
@@ -329,132 +306,67 @@
         </x-ui.card>
 
         {{--
-            Balances.
+            Cards.
 
-            Sixteen accounts as one flat alphabetical list made this the tallest
-            thing on the page, and most of it said nothing: nine of the rows were
-            cards sitting at zero. Now the two totals lead, each group carries its
-            own subtotal, the rows are ordered by size, and the cards at zero
-            collapse to a single line. The list is capped and scrolls internally
-            so adding a tenth card cannot stretch the page again.
+            The only balances left on this page. Bank and cash are payment
+            sources now — what a current account "holds" was derived from
+            income the household does not record, so it drifted further from
+            the truth every week. What is owed on a card is different: both the
+            purchases and the bill payments are recorded, so the figure is real,
+            and it is money still to go out.
         --}}
-        <x-ui.card x-data="{ showZero: false }">
-            <x-ui.card-header title="Balances">
+        <x-ui.card>
+            <x-ui.card-header title="Owed on cards">
                 <x-slot:action>
-                    <a href="{{ route('accounts.index') }}"
+                    <a href="{{ route('credit-cards.index') }}"
                        class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
                         Manage <x-ui.icon name="chevron-right" class="size-3.5" />
                     </a>
                 </x-slot:action>
             </x-ui.card-header>
 
-            @if ($accounts->isEmpty())
-                <x-ui.empty-state icon="wallet" title="No accounts yet" />
+            @php
+                $owingCards = $cards->filter(fn ($c) => bccomp((string) $c->cached_balance, '0', 2) === 1);
+                $clearCards = $cards->count() - $owingCards->count();
+            @endphp
+
+            @if ($cards->isEmpty())
+                <x-ui.empty-state icon="credit-card" title="No cards yet" />
             @else
-                <div class="grid grid-cols-2 divide-x divide-border border-b border-border">
-                    <div class="px-5 py-3">
-                        <p class="text-xs text-muted-foreground">In bank &amp; cash</p>
-                        <x-finance.money :amount="$bankTotal" tone="strong" class="mt-0.5 block text-lg font-semibold" />
-                    </div>
-                    <div class="px-5 py-3">
-                        <p class="text-xs text-muted-foreground">Owed on cards</p>
-                        <x-finance.money :amount="$cardTotal" tone="debt" class="mt-0.5 block text-lg font-semibold" />
-                    </div>
+                <div class="border-b border-border px-5 py-3">
+                    <p class="text-xs text-muted-foreground">Across every card</p>
+                    <x-finance.money :amount="$cardsOwed" tone="debt" class="mt-0.5 block text-2xl font-semibold" />
                 </div>
 
-                <div class="scroll-thin max-h-[22rem] overflow-y-auto">
-                    @if ($bankAccounts->isNotEmpty())
-                        <p class="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border
-                                  bg-muted/70 px-5 py-1.5 text-[0.6875rem] font-semibold uppercase
-                                  tracking-wider text-subtle backdrop-blur">
-                            <span>Bank &amp; cash</span>
-                            <span class="tabular">{{ \App\Support\Money::compact($bankTotal) }}</span>
-                        </p>
-                        <ul class="divide-y divide-border">
-                            @foreach ($bankAccounts as $account)
-                                <li>
-                                    <a href="{{ route('accounts.show', $account) }}"
-                                       class="flex items-center gap-3 px-5 py-2 transition-colors hover:bg-muted">
-                                        <div class="min-w-0 flex-1">
-                                            <span class="block truncate text-[0.8125rem]">{{ $account->name }}</span>
-                                            @if ($account->owner)
-                                                <span class="block text-xs text-muted-foreground">{{ $account->owner->name }}</span>
-                                            @endif
-                                        </div>
-                                        <x-finance.money :amount="$account->cached_balance"
-                                            tone="strong" class="text-[0.8125rem]" />
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
+                @if ($owingCards->isEmpty())
+                    <x-ui.card-content>
+                        <p class="text-sm text-muted-foreground">Every card is clear.</p>
+                    </x-ui.card-content>
+                @else
+                    <ul class="divide-y divide-border">
+                        @foreach ($owingCards as $card)
+                            <li>
+                                <a href="{{ route('accounts.show', $card) }}"
+                                   class="flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-muted">
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate text-[0.8125rem]">{{ $card->name }}</span>
+                                        @if ($card->owner)
+                                            <span class="block text-xs text-muted-foreground">{{ $card->owner->name }}</span>
+                                        @endif
+                                    </span>
+                                    <x-finance.money :amount="$card->cached_balance" tone="debt" class="text-[0.8125rem]" />
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
 
-                    @if ($cardAccounts->isNotEmpty())
-                        <p class="sticky top-0 z-10 flex items-center justify-between gap-2 border-y border-border
-                                  bg-muted/70 px-5 py-1.5 text-[0.6875rem] font-semibold uppercase
-                                  tracking-wider text-subtle backdrop-blur">
-                            <span>Credit cards</span>
-                            <span class="tabular">{{ \App\Support\Money::compact($cardTotal) }}</span>
-                        </p>
-                        <ul class="divide-y divide-border">
-                            @foreach ($cardsWithBalance as $account)
-                                <li>
-                                    <a href="{{ route('accounts.show', $account) }}"
-                                       class="flex items-center gap-3 px-5 py-2 transition-colors hover:bg-muted">
-                                        <div class="min-w-0 flex-1">
-                                            <span class="block truncate text-[0.8125rem]">{{ $account->name }}</span>
-                                            @if ($account->owner)
-                                                <span class="block text-xs text-muted-foreground">{{ $account->owner->name }}</span>
-                                            @endif
-                                        </div>
-                                        <x-finance.money :amount="$account->cached_balance"
-                                            tone="debt" class="text-[0.8125rem]" />
-                                    </a>
-                                </li>
-                            @endforeach
-
-                            @if ($cardsAtZero->isNotEmpty())
-                                <li>
-                                    <button type="button" x-on:click="showZero = !showZero"
-                                            class="flex w-full items-center gap-2 px-5 py-2 text-left text-xs
-                                                   text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                                        <x-ui.icon name="chevron-right" class="size-3.5 transition-transform"
-                                            x-bind:class="showZero && 'rotate-90'" />
-                                        <span x-text="showZero ? 'Hide' : 'Show'">Show</span>
-                                        <span>{{ $cardsAtZero->count() }} {{ \Illuminate\Support\Str::plural('card', $cardsAtZero->count()) }} with nothing owed</span>
-                                    </button>
-                                </li>
-
-                                {{-- One <li> inside the template, not a <div>: an
-                                     Alpine x-if template needs a single root, and
-                                     a ul may only contain list items. --}}
-                                <template x-if="showZero">
-                                    <li class="divide-y divide-border border-t border-border">
-                                        @foreach ($cardsAtZero as $account)
-                                            <a href="{{ route('accounts.show', $account) }}"
-                                               class="flex items-center gap-3 px-5 py-2 transition-colors hover:bg-muted">
-                                                <div class="min-w-0 flex-1">
-                                                    <span class="block truncate text-[0.8125rem] text-muted-foreground">{{ $account->name }}</span>
-                                                    @if ($account->owner)
-                                                        <span class="block text-xs text-subtle">{{ $account->owner->name }}</span>
-                                                    @endif
-                                                </div>
-                                                <x-finance.money :amount="$account->cached_balance"
-                                                    tone="muted" class="text-[0.8125rem]" />
-                                            </a>
-                                        @endforeach
-                                    </li>
-                                </template>
-                            @endif
-                        </ul>
-                    @endif
-                </div>
+                @if ($clearCards > 0)
+                    <x-ui.card-footer>
+                        {{ $clearCards }} other {{ \Illuminate\Support\Str::plural('card', $clearCards) }} at zero.
+                    </x-ui.card-footer>
+                @endif
             @endif
-
-            <x-ui.card-footer class="flex items-center justify-between">
-                <span>Net worth</span>
-                <x-finance.money :amount="$netWorth['net_worth']" tone="strong" class="text-sm" />
-            </x-ui.card-footer>
         </x-ui.card>
 
         @if ($friendBalances->isNotEmpty())
@@ -578,8 +490,8 @@ document.addEventListener('DOMContentLoaded', function () {
     ftChart.area(document.getElementById('cashflowChart'), {
         labels: @json($series->pluck('short')),
         datasets: [
-            { label: 'Received', data: @json($series->pluck('income')->map(fn ($a) => (float) $a)), color: ftChart.colors.income },
             { label: 'Spent', data: @json($series->pluck('spending')->map(fn ($a) => (float) $a)), color: ftChart.colors.expense },
+            { label: 'On cards', data: @json($series->pluck('card_spending')->map(fn ($a) => (float) $a)), color: ftChart.palette[0], fill: false },
         ],
     });
 

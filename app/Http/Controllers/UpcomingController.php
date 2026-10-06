@@ -24,7 +24,11 @@ class UpcomingController extends Controller
         return view('upcoming.index', [
             'days' => $days,
             'obligations' => $this->upcoming->forNextDays($days),
-            'reality' => $this->upcoming->financialReality($days),
+            // "Realistically available" used to live here: bank balance minus
+            // commitments. The bank half of that was derived from income the
+            // household does not record, so what is left is the commitment
+            // itself — which is the part that was always actionable.
+            'committed' => $this->upcoming->totalFor($days),
             'next7' => $this->upcoming->totalFor(7),
             'overdue' => $this->upcoming->overdue(),
         ]);

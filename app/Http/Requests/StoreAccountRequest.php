@@ -22,13 +22,33 @@ class StoreAccountRequest extends FormRequest
             'owner_id' => ['nullable', 'exists:people,id'],
             // Opening balance is a magnitude: for a credit card it is the amount
             // owed, so it stays positive and is never entered as a negative.
-            'opening_balance' => ['required', 'numeric', 'min:0', 'max:99999999999.99'],
-            'opening_balance_date' => ['required', 'date'],
+            // Only accounts that keep a balance need an opening one. A bank or
+            // cash account has no running balance to open, so these default to
+            // zero and today rather than being demanded of the household.
+            'opening_balance' => ['nullable', 'numeric', 'min:0', 'max:99999999999.99'],
+            'opening_balance_date' => ['nullable', 'date'],
             'currency' => ['nullable', 'string', 'size:3'],
             'is_active' => ['nullable', 'boolean'],
             'is_set_aside' => ['nullable', 'boolean'],
             'set_aside_reason' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
+        ];
+    }
+
+    /** Fill in what a balance-free account does not ask for. */
+    protected function passedValidation(): void
+    {
+        $this->merge([
+            'opening_balance' => $this->input('opening_balance') ?? '0',
+            'opening_balance_date' => $this->input('opening_balance_date') ?? now()->toDateString(),
+        ]);
+    }
+
+    public function validated($key = null, $default = null): array
+    {
+        return parent::validated($key, $default) + [
+            'opening_balance' => $this->input('opening_balance'),
+            'opening_balance_date' => $this->input('opening_balance_date'),
         ];
     }
 

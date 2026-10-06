@@ -12,6 +12,30 @@
 
 @section('content')
 
+@if (! $account->tracksBalance())
+    {{-- A payment source has no balance to explain. What it did this period is
+         the only thing the app actually knows about it. --}}
+    <x-ui.card class="mb-4">
+        <x-ui.card-content>
+            <div class="grid gap-5 sm:grid-cols-2">
+                <div>
+                    <p class="text-xs font-medium text-muted-foreground">Out through this account</p>
+                    <p class="mt-1 text-2xl font-semibold tabular">
+                        {{ \App\Support\Money::inr($spentThrough ?? '0.00') }}
+                    </p>
+                    <p class="text-xs text-muted-foreground">{{ $periodLabel ?? 'this month' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-muted-foreground">Kind</p>
+                    <p class="mt-1 text-sm">{{ $account->type->label() }}</p>
+                    <p class="text-xs text-muted-foreground">
+                        No balance is kept — this app records what you spend, not what you earn.
+                    </p>
+                </div>
+            </div>
+        </x-ui.card-content>
+    </x-ui.card>
+@else
 {{-- Rule 8: a balance must be explainable as its opening figure plus its
      ledger. This card is that explanation, laid out. --}}
 <x-ui.card class="mb-4">
@@ -45,6 +69,7 @@
         </div>
     </x-ui.card-content>
 </x-ui.card>
+@endif
 
 <x-ui.card>
     <x-ui.card-header title="Ledger" description="Every entry behind the balance above" />

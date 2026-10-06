@@ -17,7 +17,7 @@
 @endsection
 
 @section('content')
-@php($hasData = $series->contains(fn ($m) => bccomp($m->spending, '0', 2) === 1 || bccomp($m->income, '0', 2) === 1))
+@php($hasData = $series->contains(fn ($m) => bccomp($m->spending, '0', 2) === 1))
 
 @unless ($hasData)
     <x-ui.card>
@@ -27,7 +27,7 @@
 @else
 
 <x-ui.card>
-    <x-ui.card-header title="Money in vs money out" />
+    <x-ui.card-header title="Spending month by month" />
     <x-ui.card-content>
         <div class="h-64"><canvas id="trendChart"></canvas></div>
     </x-ui.card-content>
@@ -41,10 +41,9 @@
                 <thead>
                     <tr>
                         <th scope="col">Month</th>
-                        <th scope="col" class="num">Received</th>
                         <th scope="col" class="num">Spent</th>
                         <th scope="col" class="hidden num sm:table-cell">On cards</th>
-                        <th scope="col" class="num">Left over</th>
+                        <th scope="col" class="num">Invested</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -54,14 +53,11 @@
                             <a href="{{ route('reports.index', ['month' => $m->month]) }}"
                                class="hover:underline">{{ $m->label }}</a>
                         </td>
-                        <td class="num"><x-finance.money :amount="$m->income" tone="income" /></td>
-                        <td class="num"><x-finance.money :amount="$m->spending" /></td>
+                        <td class="num"><x-finance.money :amount="$m->spending" tone="strong" /></td>
                         <td class="hidden num sm:table-cell">
                             <x-finance.money :amount="$m->card_spending" tone="muted" />
                         </td>
-                        <td class="num">
-                            <x-finance.money :amount="$m->net" :tone="bccomp($m->net, '0', 2) === -1 ? 'expense' : 'income'" />
-                        </td>
+                        <td class="num"><x-finance.money :amount="$m->invested" tone="muted" /></td>
                     </tr>
                 @endforeach
                 </tbody>
@@ -127,8 +123,8 @@ document.addEventListener('DOMContentLoaded', function () {
     ftChart.area(document.getElementById('trendChart'), {
         labels: @json($series->pluck('label')),
         datasets: [
-            { label: 'Received', data: @json($series->pluck('income')->map(fn ($v) => (float) $v)), color: ftChart.colors.income },
             { label: 'Spent', data: @json($series->pluck('spending')->map(fn ($v) => (float) $v)), color: ftChart.colors.expense },
+            { label: 'Invested', data: @json($series->pluck('invested')->map(fn ($v) => (float) $v)), color: ftChart.colors.income, fill: false },
             { label: 'On cards', data: @json($series->pluck('card_spending')->map(fn ($v) => (float) $v)), color: ftChart.colors.debt, fill: false },
         ],
     });
