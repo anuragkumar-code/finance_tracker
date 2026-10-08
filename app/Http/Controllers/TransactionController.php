@@ -57,6 +57,7 @@ class TransactionController extends Controller
             'people' => Person::active()->ordered()->get(),
             'merchants' => Merchant::active()->orderBy('name')->get(),
             'merchantGroups' => MerchantGroup::query()->ordered()->get(),
+            'accountTypes' => \App\Enums\AccountType::cases(),
             'events' => Event::query()->latestFirst()->get(),
             'types' => TransactionType::cases(),
             'plannedStatuses' => PlannedStatus::cases(),
@@ -253,6 +254,10 @@ class TransactionController extends Controller
             ->when($request->filled('end'), fn ($q) => $q->where('transaction_date', '<=', $request->date('end')))
             ->when($request->filled('type'), fn ($q) => $q->where('type', $request->input('type')))
             ->when($request->filled('account_id'), fn ($q) => $q->where('account_id', $request->input('account_id')))
+            // Drilling in from "how you paid": bank, cash or card.
+            ->when($request->filled('account_type'), fn ($q) => $q->whereHas(
+                'account', fn ($a) => $a->where('type', $request->input('account_type'))
+            ))
             ->when($request->filled('category_id'), fn ($q) => $q->where(function ($q) use ($request) {
                 $q->where('category_id', $request->input('category_id'))
                     ->orWhere('subcategory_id', $request->input('category_id'));

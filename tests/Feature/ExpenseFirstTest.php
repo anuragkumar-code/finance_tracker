@@ -58,13 +58,24 @@ class ExpenseFirstTest extends TestCase
     // Which accounts keep a balance
     // -----------------------------------------------------------------
 
-    public function test_bank_and_cash_keep_no_balance_but_cards_do(): void
+    public function test_bank_cash_and_cards_are_modes_of_payment_with_no_balance(): void
     {
         $this->assertFalse($this->bank->refresh()->tracksBalance());
-        $this->assertTrue($this->card->refresh()->tracksBalance());
+        $this->assertFalse($this->card->refresh()->tracksBalance());
 
         $this->assertTrue(Account::paymentSources()->whereKey($this->bank->id)->exists());
-        $this->assertTrue(Account::balanceTracked()->whereKey($this->card->id)->exists());
+        $this->assertTrue(Account::paymentSources()->whereKey($this->card->id)->exists());
+    }
+
+    public function test_money_owed_between_people_still_keeps_a_balance(): void
+    {
+        // The one balance worth deriving: what a friend owes after a trip is
+        // settled. It is not a mode of payment and has no statement of its own.
+        $friend = \App\Models\Person::create(['name' => 'Vishal', 'is_external' => true]);
+        $account = app(\App\Services\PersonBalanceService::class)->accountFor($friend);
+
+        $this->assertTrue($account->tracksBalance());
+        $this->assertTrue(Account::balanceTracked()->whereKey($account->id)->exists());
     }
 
     public function test_a_new_bank_account_needs_no_opening_balance(): void
@@ -79,17 +90,15 @@ class ExpenseFirstTest extends TestCase
         $this->assertSame('0.00', (string) $account->opening_balance);
     }
 
-    public function test_a_card_still_asks_for_what_is_owed(): void
+    public function test_a_new_card_needs_no_opening_balance_either(): void
     {
-        $this->post('/accounts', [
-            'name' => 'IDFC', 'type' => 'credit_card',
-            'opening_balance' => '3000', 'opening_balance_date' => '2026-01-01',
-        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->post('/accounts', ['name' => 'IDFC', 'type' => 'credit_card'])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $card = Account::where('name', 'IDFC')->sole();
 
-        $this->assertTrue($card->tracksBalance());
-        $this->assertSame('3000.00', (string) $card->opening_balance);
+        $this->assertFalse($card->tracksBalance());
     }
 
     public function test_no_bank_balance_is_shown_on_the_screens_that_used_to_lead_with_one(): void
@@ -112,14 +121,25 @@ class ExpenseFirstTest extends TestCase
             ->assertDontSee('Opening balance');
     }
 
-    public function test_what_is_owed_on_a_card_is_still_tracked(): void
+    public function test_spending_is_split_by_how_it_was_paid_for(): void
     {
         $this->spend('2500', null, $this->card);
+        $this->spend('1500');
 
-        $this->assertSame('2500.00', (string) $this->card->refresh()->cached_balance);
+        $modes = app(SpendingReportService::class)->byPaymentMode('2026-10-01', '2026-10-31');
 
-        $this->get('/')->assertOk()->assertSee('Owed on cards');
-        $this->get('/accounts')->assertOk()->assertSee('Owed on cards');
+        $this->assertSame('2500.00', $modes->firstWhere('key', 'credit_card')->amount);
+        $this->assertSame('1500.00', $modes->firstWhere('key', 'bank')->amount);
+
+        // The mode is shown; what is owed on the card is not.
+        $this->get('/')->assertOk()
+            ->assertSee('How you paid')
+            ->assertDontSee('Owed on cards');
+
+        // And the split drills through to exactly those entries.
+        $this->get('/transactions?account_type=credit_card')->assertOk()
+            ->assertSee('2,500.00')
+            ->assertDontSee('1,500.00');
     }
 
     // -----------------------------------------------------------------

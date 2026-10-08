@@ -3,9 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
-use App\Models\CreditCard;
 use App\Models\Transaction;
-use App\Services\CreditCardService;
 use App\Services\LoanService;
 use App\Services\Reporting\SpendingReportService;
 use App\Services\Reporting\UpcomingObligationsService;
@@ -16,7 +14,6 @@ class DashboardController extends Controller
 {
     public function __construct(
         private readonly SpendingReportService $reports,
-        private readonly CreditCardService $cards,
         private readonly UpcomingObligationsService $upcoming,
         private readonly LoanService $loans,
         private readonly \App\Services\Reporting\BudgetService $budgets,
@@ -65,22 +62,13 @@ class DashboardController extends Controller
             'byPlanned' => $this->reports->groupedBy('planned_status', $start, $end),
             'byPayer' => $this->reports->groupedBy('payer_id', $start, $end),
 
-            // Only accounts whose balance means something. Bank and cash are
-            // payment sources now: the household records what it spends, not
-            // what it earns, so a derived current-account balance only drifts.
-            'cards' => Account::query()->active()->counted()->balanceTracked()
-                ->where('type', 'credit_card')->with('owner')
-                ->orderByDesc('cached_balance')->get(),
-
             'hasAccounts' => Account::query()->active()->counted()->exists(),
 
-            // Card bills coming due are the household's most immediate
-            // commitment, so they sit on the dashboard rather than behind a tab.
-            'cardDues' => $this->cards->upcomingDues(30),
-            'cardsOwed' => CreditCard::with('account')->get()->reduce(
-                fn (string $carry, CreditCard $card) => bcadd($carry, $card->outstanding(), 2),
-                '0.00'
-            ),
+            // How the month's spending was paid for. Not a balance — the split
+            // between bank and card is the mode-of-payment question, which is
+            // the one the household does want answered.
+            'byPaymentMode' => $this->reports->byPaymentMode($start, $end),
+
 
             // What is already promised to leave over the next 30 days: EMIs,
             // card bills, rent, broadband. The outflow side of "what is coming".

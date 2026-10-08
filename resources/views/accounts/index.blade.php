@@ -11,14 +11,14 @@
 @section('content')
 
 <div class="grid grid-cols-2 gap-3 lg:gap-4">
-    <x-ui.stat label="Owed on cards" icon="credit-card" tone="debt"
-        :value="\App\Support\Money::inr($cardsOwed)"
-        hint="Purchases recorded, bills paid — this one is real" />
-
     <x-ui.stat label="Out this month" icon="trending-down"
         :value="\App\Support\Money::inr($spentThisMonth)"
         :href="route('transactions.index', ['start' => now()->startOfMonth()->toDateString(), 'end' => now()->endOfMonth()->toDateString()])"
         hint="Across every account" />
+
+    <x-ui.stat label="Of that, on cards" icon="credit-card"
+        :value="\App\Support\Money::inr($onCards)"
+        hint="Charged this month, not owed" />
 </div>
 
 {{-- Owner filter. Everyone is the default: the app should never look like a
@@ -63,7 +63,7 @@
     --}}
     <x-ui.card class="mt-4">
         <x-ui.card-header title="Payment sources"
-            description="Bank and cash — no balance kept, only what went out through them" />
+            description="Bank, cash and cards — how money leaves, with no balance kept" />
         <x-ui.card-content flush>
             <div class="overflow-x-auto">
                 <table class="data-table">
@@ -233,9 +233,10 @@
     </x-ui.card>
 @endif
 
-<x-ui.alert variant="muted" icon="info" title="Why bank accounts have no balance" class="mt-6">
-    This app tracks what you spend, not what you earn — so a running bank balance would be
-    guesswork that drifts further out every month. Cards are different: both the purchases and
-    the bill payments are recorded, so what you owe on them is accurate.
+<x-ui.alert variant="muted" icon="info" title="Why no balances here" class="mt-6">
+    This app answers how much goes out each month and where it goes. An account is the mode of
+    payment on an entry — which bank, or which card — and nothing more. A bank balance would be
+    guesswork without recording income, and what is still owed on a card is a question its own
+    statement answers.
 </x-ui.alert>
 @endsection

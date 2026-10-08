@@ -56,9 +56,13 @@ class AccountController extends Controller
                 ->groupBy(fn (Account $a) => $a->type->label()),
             'spendByAccount' => $spendByAccount,
             'setAside' => $setAside,
-            'cardsOwed' => $accounts
+            // Spent on cards, not owed on them: a card is a way of paying now,
+            // and what is still owed on it is a question for its own statement.
+            'onCards' => $accounts
                 ->filter(fn (Account $a) => $a->type === \App\Enums\AccountType::CreditCard)
-                ->reduce(fn (string $carry, Account $a) => bcadd($carry, (string) $a->cached_balance, 2), '0.00'),
+                ->reduce(fn (string $carry, Account $a) => bcadd(
+                    $carry, (string) ($spendByAccount->get($a->id)->spent ?? '0'), 2
+                ), '0.00'),
             'spentThisMonth' => $spendByAccount->reduce(
                 fn (string $carry, $row) => bcadd($carry, (string) $row->spent, 2), '0.00'
             ),

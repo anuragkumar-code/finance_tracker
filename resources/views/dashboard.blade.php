@@ -306,68 +306,45 @@
         </x-ui.card>
 
         {{--
-            Cards.
+            How the month was paid for.
 
-            The only balances left on this page. Bank and cash are payment
-            sources now — what a current account "holds" was derived from
-            income the household does not record, so it drifted further from
-            the truth every week. What is owed on a card is different: both the
-            purchases and the bill payments are recorded, so the figure is real,
-            and it is money still to go out.
+            This replaced "owed on cards". The app holds no view of what is owed
+            on a card any more — that is what the card's own statement is for —
+            but which way the money left is exactly the question the household
+            does want answered.
         --}}
-        <x-ui.card>
-            <x-ui.card-header title="Owed on cards">
-                <x-slot:action>
-                    <a href="{{ route('credit-cards.index') }}"
-                       class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-                        Manage <x-ui.icon name="chevron-right" class="size-3.5" />
-                    </a>
-                </x-slot:action>
-            </x-ui.card-header>
-
-            @php
-                $owingCards = $cards->filter(fn ($c) => bccomp((string) $c->cached_balance, '0', 2) === 1);
-                $clearCards = $cards->count() - $owingCards->count();
-            @endphp
-
-            @if ($cards->isEmpty())
-                <x-ui.empty-state icon="credit-card" title="No cards yet" />
-            @else
-                <div class="border-b border-border px-5 py-3">
-                    <p class="text-xs text-muted-foreground">Across every card</p>
-                    <x-finance.money :amount="$cardsOwed" tone="debt" class="mt-0.5 block text-2xl font-semibold" />
-                </div>
-
-                @if ($owingCards->isEmpty())
-                    <x-ui.card-content>
-                        <p class="text-sm text-muted-foreground">Every card is clear.</p>
-                    </x-ui.card-content>
-                @else
+        @if ($byPaymentMode->isNotEmpty())
+            <x-ui.card>
+                <x-ui.card-header title="How you paid" :description="$month->format('F')" />
+                <x-ui.card-content flush>
                     <ul class="divide-y divide-border">
-                        @foreach ($owingCards as $card)
-                            <li>
-                                <a href="{{ route('accounts.show', $card) }}"
-                                   class="flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-muted">
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block truncate text-[0.8125rem]">{{ $card->name }}</span>
-                                        @if ($card->owner)
-                                            <span class="block text-xs text-muted-foreground">{{ $card->owner->name }}</span>
-                                        @endif
+                        @foreach ($byPaymentMode as $mode)
+                            @php
+                                $share = bccomp($spending, '0', 2) === 1
+                                    ? (int) round((float) $mode->amount / (float) $spending * 100)
+                                    : 0;
+                            @endphp
+                            <li class="px-5 py-2.5">
+                                <div class="flex items-center justify-between gap-3">
+                                    <a href="{{ route('transactions.index', ['start' => $start, 'end' => $end, 'type' => 'expense', 'account_type' => $mode->key]) }}"
+                                       class="min-w-0 truncate text-sm hover:underline">
+                                        {{ $mode->label }}
+                                        <span class="text-xs text-muted-foreground">· {{ $mode->count }}</span>
+                                    </a>
+                                    <span class="flex shrink-0 items-baseline gap-3">
+                                        <span class="text-xs text-muted-foreground tabular">{{ $share }}%</span>
+                                        <x-finance.money :amount="$mode->amount" tone="strong" class="text-sm" />
                                     </span>
-                                    <x-finance.money :amount="$card->cached_balance" tone="debt" class="text-[0.8125rem]" />
-                                </a>
+                                </div>
+                                <div class="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                                    <div class="h-full rounded-full bg-primary/70" style="width: {{ $share }}%"></div>
+                                </div>
                             </li>
                         @endforeach
                     </ul>
-                @endif
-
-                @if ($clearCards > 0)
-                    <x-ui.card-footer>
-                        {{ $clearCards }} other {{ \Illuminate\Support\Str::plural('card', $clearCards) }} at zero.
-                    </x-ui.card-footer>
-                @endif
-            @endif
-        </x-ui.card>
+                </x-ui.card-content>
+            </x-ui.card>
+        @endif
 
         @if ($friendBalances->isNotEmpty())
             <x-ui.card>
@@ -394,36 +371,6 @@
                                     <span class="text-xs text-muted-foreground">{{ $friendText }}</span>
                                 </span>
                                 <x-finance.money :amount="$friendAmount" :tone="$friendTone" class="text-sm" />
-                            </li>
-                        @endforeach
-                    </ul>
-                </x-ui.card-content>
-            </x-ui.card>
-        @endif
-
-        {{-- Only when a bill is actually due. What is owed across cards already
-             appears in Balances above, so with no dues this panel would be
-             repeating a figure the reader has just passed. --}}
-        @if ($cardDues->isNotEmpty())
-            <x-ui.card>
-                <x-ui.card-header title="Card bills due" description="In the next 30 days">
-                    <x-slot:action>
-                        <a href="{{ route('credit-cards.index') }}"
-                           class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-                            All <x-ui.icon name="chevron-right" class="size-3.5" />
-                        </a>
-                    </x-slot:action>
-                </x-ui.card-header>
-                <x-ui.card-content flush>
-                    <ul class="divide-y divide-border">
-                        @foreach ($cardDues as $due)
-                            <li class="flex items-center justify-between gap-3 px-5 py-2.5">
-                                <div class="min-w-0">
-                                    <a href="{{ route('credit-cards.statements.show', [$due->creditCard, $due]) }}"
-                                       class="block truncate text-sm hover:underline">{{ $due->creditCard->card_name }}</a>
-                                    <p class="text-xs text-muted-foreground">due {{ $due->due_date->format('d M') }}</p>
-                                </div>
-                                <x-finance.money :amount="$due->balanceRemaining()" class="text-sm" tone="strong" />
                             </li>
                         @endforeach
                     </ul>

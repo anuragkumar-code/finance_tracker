@@ -411,3 +411,22 @@ largest regular outflow was missing from spending. Where an entry already
 exists it is linked, never written twice. `transactions:recategorise` changes
 only the category; amount, account and date are never touched, and it refuses
 to run without a `--match` or `--id` so it cannot sweep up more than intended.
+
+### Cards are a mode of payment
+
+`AccountType::isPaymentMode()` covers bank, cash and credit card: these keep no
+balance at all. `keepsBalance()` is its inverse and drives
+`accounts.tracks_balance` in `Account::booted()`. What remains balance-tracked
+is money owed between people (a friend's balance) and real holdings.
+
+The account on an entry is therefore a label for *how* it was paid. The split is
+`SpendingReportService::byPaymentMode()`, shown on the dashboard and reports and
+drillable through the ledger's `account_type` filter.
+
+What went with card balances: the outstanding figure, utilisation, statements,
+bill reminders and the Credit Cards menu entry. Upcoming no longer includes card
+bills — `UpcomingObligationsService::cardObligations()` is still there, just not
+merged in. The `credit_cards`, statement and payment tables and the eight
+bill-payment legs stay in the database; they are simply no longer the basis of
+any figure. Flipping `tracks_balance` back to 1 for cards restores the old
+behaviour.

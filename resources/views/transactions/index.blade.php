@@ -11,7 +11,7 @@
 
 @section('content')
 @php
-    $advancedKeys = ['category_id', 'payer_id', 'beneficiary_id', 'planned_status', 'purpose', 'merchant_id', 'merchant_group_id', 'event_id', 'min_amount', 'max_amount'];
+    $advancedKeys = ['category_id', 'payer_id', 'beneficiary_id', 'planned_status', 'purpose', 'merchant_id', 'merchant_group_id', 'event_id', 'account_type', 'min_amount', 'max_amount'];
     $advancedCount = collect($filters)->only($advancedKeys)->filter(fn ($v) => filled($v))->count();
 
     $sort = request()->query('sort', 'date');
@@ -34,6 +34,7 @@
         ['key' => 'merchant_id', 'label' => 'Merchant', 'value' => $lookup($merchants, $filters['merchant_id'] ?? null)],
         ['key' => 'merchant_group_id', 'label' => 'Kind of place', 'value' => $lookup($merchantGroups, $filters['merchant_group_id'] ?? null)],
         ['key' => 'event_id', 'label' => 'Trip', 'value' => $lookup($events, $filters['event_id'] ?? null)],
+        ['key' => 'account_type', 'label' => 'Paid by', 'value' => collect($accountTypes)->firstWhere('value', $filters['account_type'] ?? null)?->label()],
         ['key' => 'payer_id', 'label' => 'Paid by', 'value' => $lookup($people, $filters['payer_id'] ?? null)],
         ['key' => 'beneficiary_id', 'label' => 'For', 'value' => $lookup($people, $filters['beneficiary_id'] ?? null)],
         ['key' => 'planned_status', 'label' => 'Planned', 'value' => collect($plannedStatuses)->firstWhere('value', $filters['planned_status'] ?? null)?->label()],
@@ -140,6 +141,16 @@
                             <option value="">All merchants</option>
                             @foreach ($merchants as $merchant)
                                 <option value="{{ $merchant->id }}" @selected(($filters['merchant_id'] ?? '') == $merchant->id)>{{ $merchant->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Paid by</span>
+                        <select name="account_type" class="{{ $field }}">
+                            <option value="">Any way</option>
+                            @foreach ($accountTypes as $accountType)
+                                <option value="{{ $accountType->value }}" @selected(($filters['account_type'] ?? '') === $accountType->value)>{{ $accountType->label() }}</option>
                             @endforeach
                         </select>
                     </label>

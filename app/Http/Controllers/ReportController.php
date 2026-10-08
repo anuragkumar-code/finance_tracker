@@ -56,6 +56,7 @@ class ReportController extends Controller
             'byPlanned' => $this->reports->groupedBy('planned_status', $start, $end),
             'byPurpose' => $this->reports->groupedBy('purpose', $start, $end),
             'byChannel' => $this->reports->byChannel($start, $end),
+            'byPaymentMode' => $this->reports->byPaymentMode($start, $end),
             'online' => $this->reports->onlineSpending($start, $end),
         ]);
     }

@@ -86,6 +86,34 @@ class SpendingReportService
         return bcsub($this->cashInflow($start, $end), $this->cashOutflow($start, $end), self::SCALE);
     }
 
+    /**
+     * Spending split by how it was paid for — bank, cash or card.
+     *
+     * The account on an entry is a label for the mode of payment: no balance is
+     * derived from it. This is the cut that question deserves, and it is the
+     * one the household asked to keep when card balances went.
+     *
+     * @return Collection<int, object{label: string, key: string, amount: string, count: int}>
+     */
+    public function byPaymentMode(string $start, string $end): Collection
+    {
+        $rows = Transaction::query()
+            ->spending()
+            ->inPeriod($start, $end)
+            ->join('accounts', 'accounts.id', '=', 'transactions.account_id')
+            ->selectRaw('accounts.type AS mode, SUM(transactions.amount) AS amount, COUNT(*) AS entries')
+            ->groupBy('accounts.type')
+            ->orderByDesc('amount')
+            ->get();
+
+        return $rows->map(fn ($row) => (object) [
+            'key' => $row->mode,
+            'label' => AccountType::tryFrom($row->mode)?->label() ?? $row->mode,
+            'amount' => $this->decimal($row->amount),
+            'count' => (int) $row->entries,
+        ]);
+    }
+
     /** Spending charged to credit cards in the period (purchases, not payments). */
     public function creditCardSpending(string $start, string $end): string
     {

@@ -12,7 +12,6 @@
         <x-ui.button type="submit" variant="outline">Go</x-ui.button>
     </form>
     <x-ui.button :href="route('reports.trends')" variant="outline">Trends</x-ui.button>
-    <x-ui.button :href="route('reports.net-worth')" variant="outline">Net worth</x-ui.button>
 @endsection
 
 @section('content')
@@ -190,6 +189,10 @@
         'filterKey' => 'payer_id', 'baseFilters' => $base])
     @include('reports._breakdown', ['title' => 'Who it was for', 'rows' => $byBeneficiary, 'total' => $spending,
         'filterKey' => 'beneficiary_id', 'baseFilters' => $base])
+    @include('reports._breakdown', ['title' => 'How you paid', 'rows' => $byPaymentMode, 'total' => $spending,
+        'filterKey' => 'account_type', 'baseFilters' => $base,
+        'empty' => 'Nothing recorded this month.'])
+
     @include('reports._breakdown', ['title' => 'Paid with', 'rows' => $byAccount, 'total' => $spending,
         'filterKey' => 'account_id', 'baseFilters' => $base])
     @include('reports._breakdown', ['title' => 'What it was for', 'rows' => $byPurpose, 'total' => $spending,

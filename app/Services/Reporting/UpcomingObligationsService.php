@@ -37,10 +37,13 @@ class UpcomingObligationsService
         $from = today();
         $to = today()->addDays($days);
 
+        // Card bills are deliberately absent: with cards reduced to a mode of
+        // payment, the app holds no view of what is owed on one, and the card's
+        // own statement says it better. cardObligations() is kept for the
+        // credit-card screens, which are no longer linked from the menu.
         return collect()
             ->merge($this->loanObligations($from, $to))
             ->merge($this->recurringObligations($from, $to))
-            ->merge($this->cardObligations($from, $to))
             ->sortBy(fn (object $o) => $o->due_date->timestamp)
             ->values();
     }

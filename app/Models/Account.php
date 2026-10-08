@@ -56,11 +56,12 @@ class Account extends Model
             if ($account->type instanceof AccountType) {
                 $account->normal_balance = $account->type->normalBalance();
 
-                // Derived from type for the same reason: a bank account whose
-                // balance "is tracked" would quietly start reporting a figure
-                // built from income this app does not record. Cards, investments
-                // and other holdings keep theirs.
-                $account->tracks_balance = ! $account->type->isSpendableCash();
+                // Derived from type for the same reason. Bank, cash and cards
+                // are modes of payment: a bank balance would be built from income
+                // this app does not record, and a card balance answers "what do I
+                // owe" — a question the household decided it does not ask here.
+                // What is left is money owed between people, and real holdings.
+                $account->tracks_balance = $account->type->keepsBalance();
             }
         });
     }

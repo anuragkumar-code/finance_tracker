@@ -202,7 +202,7 @@ class CreditCardScreensTest extends TestCase
         $this->assertSame('10000.00', (string) $card->account->refresh()->cached_balance);
     }
 
-    public function test_the_dashboard_shows_what_is_owed_and_due(): void
+    public function test_the_dashboard_shows_how_the_month_was_paid_for(): void
     {
         $this->bank();
         $card = $this->card('12000');
@@ -215,14 +215,22 @@ class CreditCardScreensTest extends TestCase
             statementAmount: '12000',
         );
 
-        // What is owed across every card now sits in the Balances summary, and
-        // the card with a bill falling due keeps its own panel. The wording
-        // moved; the guarantee this test exists for did not.
+        // Something charged to the card this month, which is what the dashboard
+        // now reports on: the mode of payment, not the outstanding balance.
+        app(\App\Services\TransactionService::class)->recordExpense([
+            'transaction_date' => today()->toDateString(),
+            'account_id' => $card->account_id,
+            'amount' => '1500',
+        ]);
+
+        // A card is a mode of payment now, not a debt the app follows: what is
+        // still owed on one is a question its own statement answers. What the
+        // dashboard does say is how the month's spending was paid for.
         $this->get('/')
             ->assertOk()
-            ->assertSee('Owed on cards')
-            ->assertSee('Card bills due')
-            ->assertSee('HDFC Regalia');
+            ->assertDontSee('Owed on cards')
+            ->assertDontSee('Card bills due')
+            ->assertSee('How you paid');
     }
 
     public function test_a_paid_statement_stops_appearing_as_due(): void

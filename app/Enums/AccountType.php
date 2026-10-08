@@ -46,4 +46,27 @@ enum AccountType: string
     {
         return in_array($this, [self::Bank, self::Cash], true);
     }
+
+    /**
+     * How a payment was made: a bank account, cash, or a card.
+     *
+     * These carry no balance. The household tracks what it spends and where,
+     * not what it holds or owes — so the account on an entry is a label for
+     * the mode of payment, and nothing is derived from it beyond that.
+     */
+    public function isPaymentMode(): bool
+    {
+        return in_array($this, [self::Bank, self::Cash, self::CreditCard], true);
+    }
+
+    /**
+     * Account types whose running balance is still worth deriving.
+     *
+     * What remains is money owed between people (a friend's balance) and
+     * holdings the household genuinely wants a figure for.
+     */
+    public function keepsBalance(): bool
+    {
+        return ! $this->isPaymentMode();
+    }
 }

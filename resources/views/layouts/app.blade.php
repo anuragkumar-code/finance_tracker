@@ -39,7 +39,6 @@
         ],
         'Money' => [
             ['route' => 'accounts.index', 'label' => 'Accounts', 'icon' => 'wallet', 'match' => 'accounts.*'],
-            ['route' => 'credit-cards.index', 'label' => 'Credit Cards', 'icon' => 'credit-card', 'match' => 'credit-cards.*'],
             ['route' => 'loans.index', 'label' => 'Loans', 'icon' => 'landmark', 'match' => 'loans.*'],
             ['route' => 'recurring.index', 'label' => 'Recurring', 'icon' => 'repeat', 'match' => 'recurring.*'],
             ['route' => 'assets.index', 'label' => 'Assets', 'icon' => 'building-2', 'match' => 'assets.*'],
