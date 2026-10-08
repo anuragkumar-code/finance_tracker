@@ -11,6 +11,7 @@
                       focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25">
         <x-ui.button type="submit" variant="outline">Go</x-ui.button>
     </form>
+    <x-ui.button :href="route('reports.compare')" variant="outline">Compare</x-ui.button>
     <x-ui.button :href="route('reports.trends')" variant="outline">Trends</x-ui.button>
 @endsection
 

@@ -211,7 +211,7 @@ class LoanScreensTest extends TestCase
         // record, so only the commitment survived the move to expense-first.
         $this->get('/')
             ->assertOk()
-            ->assertSee('Committed next 30 days')
+            ->assertSee('Already committed')
             ->assertSee('Land Loan');
     }
 }

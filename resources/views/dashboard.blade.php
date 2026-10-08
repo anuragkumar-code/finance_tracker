@@ -42,13 +42,25 @@
         :series="$investedSeries"
         hint="Money moved, not spent" />
 
+    @php
+        // While a month is running, the only fair comparison is the same number
+        // of days into the previous one.
+        $spentHint = $isCurrentMonth
+            ? 'By day '.$dayOfMonth.' of '.$previousMonthLabel.': '.\App\Support\Money::inr($spentByNowLastMonth)
+            : 'Whole month';
+
+        if (! $comparable) {
+            $spentHint = 'Nothing recorded that far back to compare with';
+        }
+
+        $spentDeltaLabel = $isCurrentMonth ? 'vs same point in '.$previousMonthLabel : 'vs '.$previousLabel;
+    @endphp
+
     <x-ui.stat label="Spent" icon="trending-down"
         :value="\App\Support\Money::inr($spending)"
-        :delta="$spendingDelta" :delta-label="'vs '.$previousLabel" delta-good="down"
+        :delta="$spentSoFarDelta" :delta-label="$spentDeltaLabel" delta-good="down"
         :series="$spendSeries"
-        :hint="bccomp($debtRepaid, '0', 2) === 1
-            ? 'Includes '.\App\Support\Money::inr($debtRepaid).' of loan EMIs'
-            : 'Excludes transfers and card bills'" />
+        :hint="$spentHint" />
 
     <x-ui.stat label="On credit cards" icon="credit-card"
         :value="\App\Support\Money::inr($cardSpending)"
@@ -56,10 +68,16 @@
         :series="$cardSeries"
         hint="Charged this month" />
 
-    <x-ui.stat label="Committed next 30 days" icon="calendar-clock"
-        :value="\App\Support\Money::inr($committed)"
+    @php
+        $remainingHint = bccomp($committedRemaining, '0', 2) === 1
+            ? \App\Support\Money::inr($committedRemaining).' still to go this month'
+            : 'Nothing left to go out this month';
+    @endphp
+
+    <x-ui.stat label="Already committed" icon="calendar-clock"
+        :value="\App\Support\Money::inr($split['committed'])"
         :href="route('upcoming.index')"
-        hint="EMIs, card bills, rent" />
+        :hint="$remainingHint" />
 </div>
 
 @if ($budgetAlerts->isNotEmpty() || $spendingAnomalies->isNotEmpty())
@@ -140,6 +158,95 @@
 @endif
 
 
+@php
+    $committedShare = $split['committed_share'];
+    $discretionaryShare = 100 - $committedShare;
+@endphp
+
+<div class="mt-4 grid items-start gap-4 lg:grid-cols-12">
+    {{--
+        Committed against chosen.
+
+        Around three fifths of this household's spending is EMIs, rent and
+        recurring charges that do not change month to month. Shown as one total,
+        an ordinary month looks alarmingly variable; split, the part worth
+        thinking about is obvious.
+    --}}
+    <x-ui.card class="lg:col-span-5">
+        <x-ui.card-header title="Committed vs chosen" :description="$month->format('F')" />
+        <x-ui.card-content class="space-y-4">
+            <div class="flex h-2.5 overflow-hidden rounded-full bg-muted">
+                <div class="bg-debt" style="width: {{ $committedShare }}%"></div>
+                <div class="bg-primary/70" style="width: {{ $discretionaryShare }}%"></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span class="size-2 rounded-full bg-debt"></span> Already committed
+                    </p>
+                    <x-finance.money :amount="$split['committed']" tone="strong" class="mt-0.5 block text-lg font-semibold" />
+                    <p class="text-xs text-muted-foreground">{{ $committedShare }}% · EMIs, rent, bills</p>
+                </div>
+                <div>
+                    <p class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span class="size-2 rounded-full bg-primary/70"></span> Your choices
+                    </p>
+                    <x-finance.money :amount="$split['discretionary']" tone="strong" class="mt-0.5 block text-lg font-semibold" />
+                    <p class="text-xs text-muted-foreground">{{ $discretionaryShare }}% · the part you can move</p>
+                </div>
+            </div>
+        </x-ui.card-content>
+    </x-ui.card>
+
+    {{-- "Month on month" is really asking what changed, so the movement is
+         reported rather than two columns to compare by eye. --}}
+    <x-ui.card class="lg:col-span-7">
+        <x-ui.card-header title="What changed"
+            :description="$isCurrentMonth
+                ? 'Against the same days of '.$previousMonthLabel
+                : 'Against '.$previousLabel" />
+        <x-ui.card-content flush>
+            @if (! $comparable)
+                <div class="px-5 py-6 text-sm text-muted-foreground">
+                    There is nothing recorded that far back to compare against yet. This fills in
+                    once you have two full months of entries.
+                </div>
+            @elseif ($movers->isEmpty())
+                <div class="px-5 py-6 text-sm text-muted-foreground">Nothing moved much either way.</div>
+            @else
+                <ul class="divide-y divide-border">
+                    @foreach ($movers as $mover)
+                        @php
+                            $rose = bccomp($mover->delta, '0', 2) === 1;
+                            $moverTone = $rose ? 'expense' : 'income';
+                            $absolute = $rose ? $mover->delta : bcsub('0', $mover->delta, 2);
+                            $moverLink = route('transactions.index', [
+                                'start' => $start, 'end' => $end, 'type' => 'expense',
+                                'category_id' => $mover->category_id,
+                            ]);
+                        @endphp
+                        <li>
+                            <a href="{{ $moverLink }}"
+                               class="flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-muted">
+                                <x-ui.icon :name="$rose ? 'arrow-up' : 'arrow-down'"
+                                    class="size-3.5 shrink-0 {{ $rose ? 'text-expense' : 'text-income' }}" />
+                                <span class="min-w-0 flex-1 truncate text-sm">{{ $mover->label }}</span>
+                                <span class="shrink-0 text-xs text-muted-foreground tabular">
+                                    {{ \App\Support\Money::compact($mover->before) }}
+                                    →
+                                    {{ \App\Support\Money::compact($mover->now) }}
+                                </span>
+                                <x-finance.money :amount="$absolute" :tone="$moverTone" class="w-24 text-right text-sm" />
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </x-ui.card-content>
+    </x-ui.card>
+</div>
+
 {{--
     Two independent columns rather than a twelve-column grid of rows.
 
@@ -165,6 +272,10 @@
                         <span class="inline-flex items-center gap-1.5">
                             <span class="size-2 rounded-full bg-[var(--chart-1)]"></span>
                             <span class="text-muted-foreground">On cards</span>
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="size-2 rounded-full bg-subtle"></span>
+                            <span class="text-muted-foreground">Committed</span>
                         </span>
                     </div>
                 </x-slot:action>
@@ -439,6 +550,7 @@ document.addEventListener('DOMContentLoaded', function () {
         datasets: [
             { label: 'Spent', data: @json($series->pluck('spending')->map(fn ($a) => (float) $a)), color: ftChart.colors.expense },
             { label: 'On cards', data: @json($series->pluck('card_spending')->map(fn ($a) => (float) $a)), color: ftChart.palette[0], fill: false },
+            { label: 'Committed', data: @json($series->pluck('committed')->map(fn ($a) => (float) $a)), color: ftChart.colors.subtle, fill: false },
         ],
     });
 

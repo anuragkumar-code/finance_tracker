@@ -99,11 +99,24 @@
 
         <x-ui.card>
             <x-ui.card-content class="space-y-5">
-                <div x-on:merchant-chosen="window.ftApplyMerchantDefaults($event.detail.id)">
+                <div x-data="{ chosen: false }"
+                     x-on:merchant-chosen="chosen = true; window.ftApplyMerchantDefaults($event.detail.id)">
                     <x-ui.merchant-picker :merchants="$merchants" :groups="$merchantGroups" />
-                    <p class="mt-1.5 text-xs text-muted-foreground" id="merchantHint">
+
+                    <p class="mt-1.5 text-xs text-muted-foreground" id="merchantHint" x-show="chosen" x-cloak>
                         Picking a merchant fills in what it usually is — category, account,
                         who paid — from the last time you bought there.
+                    </p>
+
+                    <p class="mt-1.5 flex items-start gap-1.5 text-xs text-muted-foreground" x-show="!chosen">
+                        <x-ui.icon name="info" class="mt-px size-3.5 shrink-0" />
+                        <span>
+                            Worth naming — without it this spend cannot show up in the
+                            quick-commerce and online-shopping figures. You can still save without one
+                            and fill it in later under
+                            <a href="{{ route('tidy-up.index') }}"
+                               class="font-medium text-foreground underline underline-offset-2">Tidy up</a>.
+                        </span>
                     </p>
                 </div>
 

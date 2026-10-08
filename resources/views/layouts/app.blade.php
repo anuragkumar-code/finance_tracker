@@ -34,6 +34,7 @@
             ['route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'layout-dashboard', 'match' => 'dashboard'],
             ['route' => 'quick-entry', 'label' => 'Quick Entry', 'icon' => 'zap', 'match' => 'quick-entry'],
             ['route' => 'transactions.index', 'label' => 'Transactions', 'icon' => 'arrow-left-right', 'match' => 'transactions.*'],
+            ['route' => 'tidy-up.index', 'label' => 'Tidy up', 'icon' => 'check-circle', 'match' => 'tidy-up.*'],
             ['route' => 'upcoming.index', 'label' => 'Upcoming', 'icon' => 'calendar-clock', 'match' => 'upcoming.*'],
             ['route' => 'events.index', 'label' => 'Trips & events', 'icon' => 'plane', 'match' => 'events.*'],
         ],
@@ -66,10 +67,12 @@
         ]))
         ->concat([
             ['label' => 'Record a spend', 'group' => 'Actions', 'icon' => 'plus', 'url' => route('quick-entry')],
+            ['label' => 'Fill in missing details', 'group' => 'Actions', 'icon' => 'check-circle', 'url' => route('tidy-up.index')],
             ['label' => 'Move money between accounts', 'group' => 'Actions', 'icon' => 'arrow-left-right', 'url' => route('transactions.create', ['type' => 'transfer'])],
             ['label' => 'Add an account', 'group' => 'Actions', 'icon' => 'wallet', 'url' => route('accounts.create')],
             ['label' => 'Plan a trip or event', 'group' => 'Actions', 'icon' => 'plane', 'url' => route('events.create')],
             ['label' => 'Record a friend paying you back', 'group' => 'Actions', 'icon' => 'hand-coins', 'url' => route('friends.index')],
+            ['label' => 'Compare two months', 'group' => 'Actions', 'icon' => 'chart-line', 'url' => route('reports.compare')],
             ['label' => 'Trends over time', 'group' => 'Actions', 'icon' => 'chart-line', 'url' => route('reports.trends')],
             ['label' => 'Export transactions as CSV', 'group' => 'Actions', 'icon' => 'download', 'url' => route('export.transactions')],
         ])

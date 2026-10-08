@@ -430,3 +430,40 @@ merged in. The `credit_cards`, statement and payment tables and the eight
 bill-payment legs stay in the database; they are simply no longer the basis of
 any figure. Flipping `tracks_balance` back to 1 for cards restores the old
 behaviour.
+
+### Tidy up: entries missing a label
+
+`TransactionCompletenessService` decides what counts as a gap, in two tiers:
+
+- **NEEDS** — category, planned/unplanned, purpose, plus entries filed under a
+  subcategory as though it were top level. Only the household can supply these.
+- **RICHER** — merchant, subcategory, who paid, who it was for.
+
+Gaps that are not gaps are excluded by rule: EMIs, confirmed recurring charges
+and settlement entries are never asked for a merchant or a person, and a
+category with no children is never asked for a subcategory. Without those
+exclusions the list fills with rows nobody can clear and stops being read.
+
+`/tidy-up` sorts by amount, not date — a handful of large entries carried most
+of the untagged value. `TidyUpController::update` accepts only tagging fields,
+so a catch-up pass can never move money or disturb an entry a settlement
+depends on; there is a test for exactly that.
+
+### Month-on-month
+
+A month still running is compared day-for-day against the previous one —
+`$dayOfMonth` in `DashboardController`, `window=aligned` on `/reports/compare`.
+Comparing eight days against a whole month reads as a collapse in spending.
+
+`SpendingReportService::ledgerStartsOn()` returns the first hand-recorded spend
+(ignoring backfilled EMIs). When a comparison window starts before it, the
+screens say so instead of reporting every category as "new".
+
+`committedVsDiscretionary()` splits spending structurally — an entry is
+committed if a loan instalment or a recurring commitment produced it. Around
+three fifths of this household's spending is committed, so a single total made
+an ordinary month look wildly variable. `categoryMovers()` reports the movement
+between two periods rather than two lists to compare by eye.
+
+There is deliberately no projected month-end figure: extrapolating a run rate
+from a month whose EMIs all land on the 1st invents a number.

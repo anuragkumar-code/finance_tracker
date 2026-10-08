@@ -20,6 +20,7 @@ use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\MerchantController;
 use App\Http\Controllers\Settings\MerchantGroupController;
 use App\Http\Controllers\Settings\PersonController;
+use App\Http\Controllers\TidyUpController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,6 +47,10 @@ Route::get('/transactions/{transaction}/edit', [TransactionController::class, 'e
 Route::put('/transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
 Route::post('/transactions/{transaction}/void', [TransactionController::class, 'void'])->name('transactions.void');
 Route::post('/transactions/{id}/restore', [TransactionController::class, 'restore'])->name('transactions.restore');
+
+// Entries still missing a label, and the quick way to fill them in.
+Route::get('/tidy-up', [TidyUpController::class, 'index'])->name('tidy-up.index');
+Route::put('/tidy-up/{transaction}', [TidyUpController::class, 'update'])->name('tidy-up.update');
 
 // Accounts and opening balances
 Route::post('/accounts/recalculate', [AccountController::class, 'recalculate'])->name('accounts.recalculate');
@@ -98,6 +103,7 @@ Route::post('/recurring/occurrences/{occurrence}/skip', [RecurringTransactionCon
  */
 Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
 Route::get('/reports/trends', [ReportController::class, 'trends'])->name('reports.trends');
+Route::get('/reports/compare', [ReportController::class, 'compare'])->name('reports.compare');
 Route::get('/reports/net-worth', [ReportController::class, 'netWorth'])->name('reports.net-worth');
 Route::get('/reports/credit-cards', [ReportController::class, 'creditCards'])->name('reports.credit-cards');
 

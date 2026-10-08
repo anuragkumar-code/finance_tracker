@@ -61,6 +61,90 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * Two months, and what actually changed between them.
+     *
+     * A month still in progress is compared over the same number of days by
+     * default — eight days of one month against a whole other one is not a
+     * comparison, it is an illusion.
+     */
+    public function compare(Request $request): View
+    {
+        $left = $request->date('left') ?? now()->startOfMonth();
+        $right = $request->date('right') ?? $left->copy()->subMonthNoOverflow();
+
+        $left = $left->startOfMonth();
+        $right = $right->startOfMonth();
+
+        $isLeftRunning = $left->isSameMonth(now());
+        $window = $request->query('window', $isLeftRunning ? 'aligned' : 'full');
+        $window = $window === 'aligned' ? 'aligned' : 'full';
+
+        // Day-aligned means "the first N days of each", where N is how far the
+        // running month has got.
+        $alignedDays = $isLeftRunning ? now()->day : $left->daysInMonth;
+
+        $periods = [
+            'left' => $this->windowFor($left, $window, $alignedDays),
+            'right' => $this->windowFor($right, $window, $alignedDays),
+        ];
+
+        $ledgerStart = $this->reports->ledgerStartsOn();
+
+        return view('reports.compare', [
+            'left' => $left,
+            'right' => $right,
+            'window' => $window,
+            'alignedDays' => $alignedDays,
+            'periods' => $periods,
+            'ledgerStart' => $ledgerStart,
+            'comparable' => $ledgerStart !== null && $ledgerStart <= $periods['right'][0],
+
+            'totals' => [
+                'left' => $this->reports->totalSpending(...$periods['left']),
+                'right' => $this->reports->totalSpending(...$periods['right']),
+            ],
+            'splits' => [
+                'left' => $this->reports->committedVsDiscretionary(...$periods['left']),
+                'right' => $this->reports->committedVsDiscretionary(...$periods['right']),
+            ],
+            'rows' => $this->reports->categoryMovers(
+                ...[...$periods['left'], ...$periods['right']], limit: 100
+            ),
+            'modes' => $this->paymentModeMovers($periods),
+        ]);
+    }
+
+    /** @return array{0: string, 1: string} */
+    private function windowFor(\Carbon\CarbonInterface $month, string $window, int $alignedDays): array
+    {
+        $start = $month->copy()->startOfMonth();
+
+        $end = $window === 'aligned'
+            ? $start->copy()->addDays(min($alignedDays, $start->daysInMonth) - 1)
+            : $start->copy()->endOfMonth();
+
+        return [$start->toDateString(), $end->toDateString()];
+    }
+
+    /** The same movement view, for how the spending was paid for. */
+    private function paymentModeMovers(array $periods): \Illuminate\Support\Collection
+    {
+        $now = $this->reports->byPaymentMode(...$periods['left'])->keyBy('key');
+        $before = $this->reports->byPaymentMode(...$periods['right'])->keyBy('key');
+
+        return $now->keys()->merge($before->keys())->unique()
+            ->map(fn ($key) => (object) [
+                'key' => $key,
+                'label' => $now[$key]->label ?? $before[$key]->label,
+                'now' => $now[$key]->amount ?? '0.00',
+                'before' => $before[$key]->amount ?? '0.00',
+                'delta' => bcsub($now[$key]->amount ?? '0', $before[$key]->amount ?? '0', 2),
+            ])
+            ->sortByDesc(fn ($row) => (float) $row->now)
+            ->values();
+    }
+
     /** Several months side by side, to show behaviour rather than a snapshot (spec section 20). */
     public function trends(Request $request): View
     {

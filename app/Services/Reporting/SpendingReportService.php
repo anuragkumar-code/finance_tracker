@@ -87,6 +87,93 @@ class SpendingReportService
     }
 
     /**
+     * The first day this household actually recorded a spend by hand.
+     *
+     * Anything before it is history the app was told about rather than kept —
+     * backfilled EMIs, opening positions. A month-on-month comparison reaching
+     * back past this date is comparing against a near-empty period and will
+     * report everything as "new", so screens check it before drawing one.
+     */
+    public function ledgerStartsOn(): ?string
+    {
+        return Transaction::query()
+            ->spending()
+            ->whereNull('loan_payment_id')
+            ->where('source', 'manual')
+            ->min('transaction_date');
+    }
+
+    /**
+     * Spending that was already decided, against spending that was a choice.
+     *
+     * EMIs, rent and the other recurring charges are 61% of this household's
+     * outgoings, and nothing about them changes month to month. Mixing them
+     * into one total makes spending look far more variable than it is and
+     * hides the part anyone can actually act on.
+     *
+     * The split is structural rather than a guess: an entry is committed if a
+     * loan instalment or a recurring commitment produced it.
+     *
+     * @return array{committed: string, discretionary: string, committed_share: int}
+     */
+    public function committedVsDiscretionary(string $start, string $end): array
+    {
+        $total = $this->totalSpending($start, $end);
+
+        $committed = $this->decimal(
+            Transaction::query()->spending()->inPeriod($start, $end)
+                ->where(fn ($q) => $q->whereNotNull('loan_payment_id')->orWhere('source', 'recurring'))
+                ->sum('amount')
+        );
+
+        return [
+            'committed' => $committed,
+            'discretionary' => bcsub($total, $committed, self::SCALE),
+            'committed_share' => bccomp($total, '0', self::SCALE) === 1
+                ? (int) round((float) $committed / (float) $total * 100)
+                : 0,
+        ];
+    }
+
+    /**
+     * Categories that moved most between two periods.
+     *
+     * "Month on month" is really asking what changed, so this reports the
+     * movement rather than two lists to compare by eye. A category present in
+     * only one of the periods still appears, with the other side at zero —
+     * something that stopped is as interesting as something that grew.
+     *
+     * @return Collection<int, object{label: string, category_id: ?int, now: string, before: string, delta: string, percent: ?int}>
+     */
+    public function categoryMovers(string $start, string $end, string $prevStart, string $prevEnd, int $limit = 6): Collection
+    {
+        $now = $this->byCategory($start, $end)->keyBy('label');
+        $before = $this->byCategory($prevStart, $prevEnd)->keyBy('label');
+
+        return $now->keys()->merge($before->keys())->unique()
+            ->map(function (string $label) use ($now, $before) {
+                $a = $this->decimal($now[$label]->amount ?? '0');
+                $b = $this->decimal($before[$label]->amount ?? '0');
+
+                return (object) [
+                    'label' => $label,
+                    'category_id' => $now[$label]->category_id ?? $before[$label]->category_id ?? null,
+                    'now' => $a,
+                    'before' => $b,
+                    'delta' => bcsub($a, $b, self::SCALE),
+                    // Null where there is nothing to compare against: rising
+                    // from zero is not a percentage.
+                    'percent' => bccomp($b, '0', self::SCALE) === 1
+                        ? (int) round(((float) $a - (float) $b) / (float) $b * 100)
+                        : null,
+                ];
+            })
+            ->sortByDesc(fn ($row) => abs((float) $row->delta))
+            ->take($limit)
+            ->values();
+    }
+
+    /**
      * Spending split by how it was paid for — bank, cash or card.
      *
      * The account on an entry is a label for the mode of payment: no balance is
@@ -394,6 +481,7 @@ class SpendingReportService
                 'income' => $income,
                 'spending' => $spending,
                 'invested' => $this->totalInvested($start, $end),
+                'committed' => $this->committedVsDiscretionary($start, $end)['committed'],
                 'card_spending' => $this->creditCardSpending($start, $end),
                 'net' => bcsub($income, $spending, self::SCALE),
             ]);

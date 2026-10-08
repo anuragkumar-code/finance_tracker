@@ -37,6 +37,23 @@ class DashboardController extends Controller
         $prevStart = $previous->copy()->startOfMonth()->toDateString();
         $prevEnd = $previous->copy()->endOfMonth()->toDateString();
 
+        // A month in progress is compared day-for-day: eight days of October
+        // against a whole September would read as a collapse in spending.
+        // Past months are compared in full, where that fairness is automatic.
+        $isCurrentMonth = $month->isSameMonth(now());
+        $dayOfMonth = $isCurrentMonth ? now()->day : $month->copy()->endOfMonth()->day;
+        $comparedEnd = $previous->copy()->startOfMonth()
+            ->addDays(min($dayOfMonth, $previous->copy()->endOfMonth()->day) - 1)
+            ->toDateString();
+
+        $spentSoFar = $this->reports->totalSpending($start, $end);
+        $spentByNowLastMonth = $this->reports->totalSpending($prevStart, $comparedEnd);
+
+        // Comparing against a window the household was not yet recording in
+        // would report every category as new. Say so rather than draw it.
+        $ledgerStart = $this->reports->ledgerStartsOn();
+        $comparable = $ledgerStart !== null && $ledgerStart <= $prevStart;
+
         $spending = $this->reports->totalSpending($start, $end);
         $invested = $this->reports->totalInvested($start, $end);
         $cardSpending = $this->reports->creditCardSpending($start, $end);
@@ -57,6 +74,27 @@ class DashboardController extends Controller
             'spending' => $spending,
             'invested' => $invested,
             'cardSpending' => $cardSpending,
+
+            // Month on month, day-aligned while the month is still running.
+            'isCurrentMonth' => $isCurrentMonth,
+            'dayOfMonth' => $dayOfMonth,
+            'comparable' => $comparable,
+            'previousMonthLabel' => $previous->format('F'),
+            'spentByNowLastMonth' => $spentByNowLastMonth,
+            // Silent rather than wrong: with nothing recorded in the window
+            // being compared against, a percentage would be invented.
+            'spentSoFarDelta' => $comparable ? $this->change($spentByNowLastMonth, $spentSoFar) : null,
+            'split' => $this->reports->committedVsDiscretionary($start, $end),
+            'movers' => $comparable
+                ? $this->reports->categoryMovers($start, $end, $prevStart, $comparedEnd)
+                : collect(),
+
+            // What is still promised to leave before the month is out. Shown
+            // instead of a projection: extrapolating a run rate from a month
+            // whose EMIs all land on the 1st invents a number.
+            'committedRemaining' => $this->upcoming->totalFor(
+                (int) max(0, now()->diffInDays($month->copy()->endOfMonth(), false))
+            ),
 
             'byCategory' => $this->reports->byCategory($start, $end),
             'byPlanned' => $this->reports->groupedBy('planned_status', $start, $end),
